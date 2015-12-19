@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace dotNetGo
 {
@@ -50,10 +52,9 @@ namespace dotNetGo
         {
             Board board = new Board();
             board.CopyState(startingBoard);
-            List<Move> availableMoves;
             while (board.TurnNumber < GameParameters.GameDepth && board.IsGameOver() == false && board.Passes < 2)
             {
-                availableMoves = GetAvailableMoves(board);
+                List<Move> availableMoves = GetAvailableMoves(board);
                 availableMoves.Shuffle(r);
                 bool f = false;
                 Move m = new Move(-1,-1);
@@ -66,38 +67,83 @@ namespace dotNetGo
                         break;
                     }
                 }
-                Console.WriteLine("Turn {0}", board.TurnNumber);
-                if (f == true)
-                    Console.WriteLine(m);
-                else
+//                Console.WriteLine("Turn {0}", board.TurnNumber);
+                if (f == false)
                 {
-                    Console.WriteLine(board.ActivePlayer == 1 ? "Black passed" : "White passed");
+//                    Console.WriteLine(board.ActivePlayer == 1 ? "Black passed" : "White passed");
                     board.Pass();
                 }
-                Console.WriteLine(board);
-                Console.WriteLine("Black prisoners == {0}", board.BlackCaptured);
-                Console.WriteLine("White prisoners == {0}", board.WhiteCaptured);
+                else
+                {
+//                    Console.WriteLine(m);
+                }
+//                Console.WriteLine(board);
+//                Console.WriteLine("Black prisoners == {0}", board.BlackCaptured);
+//                Console.WriteLine("White prisoners == {0}", board.WhiteCaptured);
 //                Console.ReadLine();
             }
             double white, black;
             int winner = board.DetermineWinner(out black, out white);
-            switch (winner)
-            {
-                case 1:
-                    Console.WriteLine("Black won by {0}", black-white);
-                    break;
-                case 2:
-                    Console.WriteLine("White won by {0}", white-black);
-                    break;
-            }
-            return 0;
+//            switch (winner)
+//            {
+//                case 1:
+//                    Console.WriteLine("Black won by {0}", black-white);
+//                    break;
+//                case 2:
+//                    Console.WriteLine("White won by {0}", white-black);
+//                    break;
+//            }
+            return winner;
         }
 
+        double GetWinrate(Move move, Board startingBoard)
+        {
+            int simulations = GameParameters.Simulations;
+            int player = startingBoard.ActivePlayer;
+            Board b = new Board();
+            b.CopyState(startingBoard);
+            if (b.PlaceStone(move) == false)
+                return 0;
+            int sim = 0;
+            int wins = 0;
+            while (sim < simulations)
+            {
+                sim++;
+                int winner = PlaySimulation(b);
+                if (winner == player)
+                    wins++;
+            }
+            return (double)wins/sim;
+        }
 
-//        
-//        public Move GetMove(Board b)
-//        {
-//            
-//        }
+        
+        public Move GetMove(Board board)
+        {
+            Board b = new Board();
+            b.CopyState(board);
+            DateTime start = DateTime.Now;
+            List<Move> availableMoves = GetAvailableMoves(b);
+            double[] winrates = new double[availableMoves.Count];
+            Move[] moves = new Move[availableMoves.Count];
+            for (int i = 0; i < availableMoves.Count; i++)
+            {
+                moves[i] = new Move(availableMoves[i]);
+                winrates[i] = GetWinrate(moves[i], b);
+            }
+            double maxWin = -1;
+            int maxWinIndex = -1;
+            for (int i = 0; i < winrates.Length; i++)
+            {
+                if (winrates[i] > maxWin)
+                {
+                    maxWin = winrates[i];
+                    maxWinIndex = i;
+                }
+            }
+            DateTime end = DateTime.Now;
+            TimeSpan ts = end - start;
+            Console.WriteLine("Found a turn in {0}", ts);
+            return moves[maxWinIndex];
+        }
     }
 }

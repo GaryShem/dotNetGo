@@ -314,6 +314,8 @@ namespace dotNetGo
         //returns false when there are potential moves left
         public bool IsGameOver()
         {
+            if (Passes >= 2)
+                return true;
             List<Move> availableMoves = new List<Move>(_size * _size);
             Move test = new Move(0,0);
             for (int i = 0; i < _size; i++)
