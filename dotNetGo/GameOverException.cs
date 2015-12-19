@@ -7,5 +7,9 @@ namespace dotNetGo
 {
     class GameOverException : Exception
     {
+        public GameOverException(string message) : base(message)
+        {
+            
+        }
     }
 }

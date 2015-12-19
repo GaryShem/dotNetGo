@@ -123,8 +123,11 @@ namespace dotNetGo
             b.CopyState(board);
             DateTime start = DateTime.Now;
             List<Move> availableMoves = GetAvailableMoves(b);
-            double[] winrates = new double[availableMoves.Count];
-            Move[] moves = new Move[availableMoves.Count];
+            Node[] nodes = new Node[availableMoves.Count];
+            for (int i = 0; i < availableMoves.Count; i++)
+                nodes[i] = new Node(availableMoves[i]);
+//            double[] winrates = new double[availableMoves.Count];
+//            Move[] moves = new Move[availableMoves.Count];
 //            for (int i = 0; i < availableMoves.Count; i++)
 //            {
 //                moves[i] = new Move(availableMoves[i]);
@@ -132,23 +135,31 @@ namespace dotNetGo
 //            }
             Parallel.For(0, availableMoves.Count, (i) =>
             {
-                moves[i] = new Move(availableMoves[i]);
-                winrates[i] = GetWinrate(moves[i], b);
+//                moves[i] = new Move(availableMoves[i]);
+                nodes[i].Winrate = GetWinrate(nodes[i].Pos, b);
             });
             double maxWin = -1;
             int maxWinIndex = -1;
-            for (int i = 0; i < winrates.Length; i++)
+            for (int i = 0; i < nodes.Length; i++)
             {
-                if (winrates[i] > maxWin)
+                if (nodes[i].Winrate > maxWin)
                 {
-                    maxWin = winrates[i];
+                    maxWin = nodes[i].Winrate;
                     maxWinIndex = i;
                 }
             }
             DateTime end = DateTime.Now;
             TimeSpan ts = end - start;
-            Console.WriteLine("Found a turn in {0}", ts);
-            return moves[maxWinIndex];
+            if (maxWin < 0.1)
+                throw new GameOverException("Turbo has surrendered");
+            if (maxWinIndex == -1)
+            {
+                Console.WriteLine("Turbo has passed");
+                return new Move(-1, -1);
+            }
+            Console.WriteLine("Turbo has found a move in {0}", ts);
+            Console.WriteLine("Coords: {0}", nodes[maxWinIndex].Pos);
+            return nodes[maxWinIndex].Pos;
         }
     }
 }

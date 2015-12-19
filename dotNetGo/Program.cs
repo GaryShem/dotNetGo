@@ -36,10 +36,12 @@ namespace dotNetGo
                     int column = int.Parse(Console.ReadLine());
                     while (b.PlaceStone(new Move(row, column)) == false)
                     {
+                        Console.WriteLine("Invalid move");
                         Console.WriteLine("Enter move coordinates: row column");
                         row = int.Parse(Console.ReadLine());
                         column = int.Parse(Console.ReadLine());
                     }
+                    Console.WriteLine(b);
                     b.PlaceStone(MC.GetMove(b));
                 }
             }
@@ -54,10 +56,12 @@ namespace dotNetGo
                     int column = int.Parse(Console.ReadLine());
                     while (b.PlaceStone(new Move(row, column)) == false)
                     {
+                        Console.WriteLine("Invalid move");
                         Console.WriteLine("Enter move coordinates: row column");
                         row = int.Parse(Console.ReadLine());
                         column = int.Parse(Console.ReadLine());
                     }
+                    Console.WriteLine(b);
                 }
             }
             else throw new Exception("can't be this player");

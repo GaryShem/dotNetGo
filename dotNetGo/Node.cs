@@ -1,15 +1,17 @@
 ﻿namespace dotNetGo
 {
     class Node {
-        public int Wins { get; set; }
-        public int Simulations { get; set; }
+//        public int Wins { get; set; }
+//        public int Simulations { get; set; }
         public Move Pos; // position of move
+        public double Winrate { get; set; }
 
         public Node(Move m)
         {
             Pos = new Move(m);
-            Wins = 0;
-            Simulations = 0;
+            Winrate = 0;
+//            Wins = 0;
+//            Simulations = 0;
         }
     }
 }
