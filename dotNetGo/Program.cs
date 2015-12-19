@@ -31,6 +31,7 @@ namespace dotNetGo
                 {
                     Console.WriteLine(b);
                     Console.WriteLine("Enter move coordinates: row column (-1 -1 for pass)");
+                    
                     int row = int.Parse(Console.ReadLine());
                     int column = int.Parse(Console.ReadLine());
                     while (b.PlaceStone(new Move(row, column)) == false)

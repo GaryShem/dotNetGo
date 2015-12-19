@@ -125,11 +125,16 @@ namespace dotNetGo
             List<Move> availableMoves = GetAvailableMoves(b);
             double[] winrates = new double[availableMoves.Count];
             Move[] moves = new Move[availableMoves.Count];
-            for (int i = 0; i < availableMoves.Count; i++)
+//            for (int i = 0; i < availableMoves.Count; i++)
+//            {
+//                moves[i] = new Move(availableMoves[i]);
+//                winrates[i] = GetWinrate(moves[i], b);
+//            }
+            Parallel.For(0, availableMoves.Count, (i) =>
             {
                 moves[i] = new Move(availableMoves[i]);
                 winrates[i] = GetWinrate(moves[i], b);
-            }
+            });
             double maxWin = -1;
             int maxWinIndex = -1;
             for (int i = 0; i < winrates.Length; i++)
