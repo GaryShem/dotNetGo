@@ -10,5 +10,6 @@ namespace dotNetGo
         public const int boardSize = 9;
         public const double komi = 6.5;
         public const int GameDepth = 500;
+        public const int Simulations = 5000;
     }
 }

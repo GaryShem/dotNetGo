@@ -5,8 +5,7 @@ using System.Text;
 
 namespace dotNetGo
 {
-    class Dragon
+    class GameOverException : Exception
     {
-     
     }
 }
