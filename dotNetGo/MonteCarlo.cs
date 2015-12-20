@@ -11,7 +11,6 @@ namespace dotNetGo
     internal class MonteCarlo
     {
         private int size = GameParameters.boardSize;
-        Random r = new Random();
         
         List<Move> GetAvailableMoves(Board b)
         {
@@ -52,10 +51,10 @@ namespace dotNetGo
         {
             Board board = new Board();
             board.CopyState(startingBoard);
-            while (board.TurnNumber < GameParameters.GameDepth && board.IsGameOver() == false && board.Passes < 2)
+            while (board.TurnNumber < GameParameters.GameDepth && board.IsGameOver() == false)
             {
                 List<Move> availableMoves = GetAvailableMoves(board);
-                availableMoves.Shuffle(r);
+                availableMoves.Shuffle();
                 bool f = false;
                 Move m = new Move(-1,-1);
                 foreach (Move move in availableMoves)
@@ -126,16 +125,8 @@ namespace dotNetGo
             Node[] nodes = new Node[availableMoves.Count];
             for (int i = 0; i < availableMoves.Count; i++)
                 nodes[i] = new Node(availableMoves[i]);
-//            double[] winrates = new double[availableMoves.Count];
-//            Move[] moves = new Move[availableMoves.Count];
-//            for (int i = 0; i < availableMoves.Count; i++)
-//            {
-//                moves[i] = new Move(availableMoves[i]);
-//                winrates[i] = GetWinrate(moves[i], b);
-//            }
             Parallel.For(0, availableMoves.Count, (i) =>
             {
-//                moves[i] = new Move(availableMoves[i]);
                 nodes[i].Winrate = GetWinrate(nodes[i].Pos, b);
             });
             double maxWin = -1;
@@ -151,14 +142,17 @@ namespace dotNetGo
             DateTime end = DateTime.Now;
             TimeSpan ts = end - start;
             if (maxWin < 0.1)
-                throw new GameOverException("Turbo has surrendered");
+            {
+                return new Move(-2, -2);
+//                throw new GameOverException("Turbo has surrendered");
+            }
             if (maxWinIndex == -1)
             {
-                Console.WriteLine("Turbo has passed");
+//                Console.WriteLine("Turbo has passed");
                 return new Move(-1, -1);
             }
             Console.WriteLine("Turbo has found a move in {0}", ts);
-            Console.WriteLine("Coords: {0}", nodes[maxWinIndex].Pos);
+//            Console.WriteLine("Coords: {0}", nodes[maxWinIndex].Pos);
             return nodes[maxWinIndex].Pos;
         }
     }

@@ -7,7 +7,54 @@ namespace dotNetGo
 {
     public class Program
     {
+//        public static TimeSpan PlaceStoneSpan = TimeSpan.Zero;
+//        public static TimeSpan IsConsumingSpan = TimeSpan.Zero;
+//        public static TimeSpan RemoveDragonSpan = TimeSpan.Zero;
+//        public static TimeSpan IsMultipleSuicideTimeSpan = TimeSpan.Zero;
+//        public static TimeSpan GetLibertiesSpan = TimeSpan.Zero;
+//        public static TimeSpan GetDragonLibertiesSpan = TimeSpan.Zero;
+//        public static TimeSpan GetDragonSpan = TimeSpan.Zero;
+//        public static TimeSpan IsGemeOverSpan = TimeSpan.Zero;
+//        public static TimeSpan IsEyeSpan = TimeSpan.Zero;
+//        public static TimeSpan CopyStateSpan = TimeSpan.Zero;
+//        public static TimeSpan ToStringSpan = TimeSpan.Zero;
+
         public static void Main(string[] args)
+        {
+            AIvsAI(10);
+        }
+
+        public static void AIvsAI(int gameCount)
+        {
+            int[] winners = new int[3];
+            MonteCarlo MC = new MonteCarlo();
+            winners[0] = 0;
+            winners[1] = 0;
+
+            for (int i = 0; i < gameCount; i++)
+            {
+                Board board = new Board();
+                while (board.TurnNumber < GameParameters.GameDepth && board.IsGameOver() == false)
+                {
+                    DateTime start = DateTime.Now;
+                    Move m = MC.GetMove(board);
+                    if (m.row == -2 && m.column == -2)
+                    {
+                        winners[3 - board.ActivePlayer]++;
+                        break;
+                    }
+                    board.PlaceStone(m);
+                    Console.WriteLine(board);
+                }
+                double black, white;
+                winners[board.DetermineWinner(out black, out white)]++;
+                Console.WriteLine(board);
+                Console.WriteLine("Turn: {0}; White captured: {1}; Black captured: {2}", board.TurnNumber, board.WhiteCaptured, board.BlackCaptured);
+                Console.WriteLine("Black score: {1}; White score: {0}", black, white);
+            }
+        }
+
+        public static void HumanVsAi()
         {
             Console.WriteLine("Chinese rules");
 
@@ -31,7 +78,7 @@ namespace dotNetGo
                 {
                     Console.WriteLine(b);
                     Console.WriteLine("Enter move coordinates: row column (-1 -1 for pass)");
-                    
+
                     int row = int.Parse(Console.ReadLine());
                     int column = int.Parse(Console.ReadLine());
                     while (b.PlaceStone(new Move(row, column)) == false)
@@ -65,7 +112,6 @@ namespace dotNetGo
                 }
             }
             else throw new Exception("can't be this player");
-
         }
 
         public static void f2()

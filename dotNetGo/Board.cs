@@ -62,17 +62,25 @@ namespace dotNetGo
 
         public bool PlaceStone(Move move)
         {
+//            DateTime start = DateTime.Now;
             if (move.row == -1 && move.column == -1)
             {
                 Pass();
+//                Program.PlaceStoneSpan += DateTime.Now - start;
                 return true;
             }
             //check if the move is on the board
             if (IsOnBoard(move) == false)
+            {
+//                Program.PlaceStoneSpan += DateTime.Now - start; 
                 return false;
+            }
             //check if the intersection is unoccupied
             if (board[move.row, move.column] != 0)
+            {
+//                Program.PlaceStoneSpan += DateTime.Now - start;
                 return false;
+            }
 
             this[move] = ActivePlayer;
 
@@ -97,6 +105,7 @@ namespace dotNetGo
             if (IsMultipleSuicide(move))
             {
                 this[move] = 0;
+//                Program.PlaceStoneSpan += DateTime.Now - start;
                 return false;
             }
 
@@ -104,11 +113,13 @@ namespace dotNetGo
             //TODO: possibly add ko checks
             Passes = 0;
             TurnNumber++;
+//            Program.PlaceStoneSpan += DateTime.Now - start;
             return true;
         }
 
         public bool IsConsuming(Move move)
         {
+//            DateTime start = DateTime.Now;
             List<Move> dragon;
             for (int i = 0; i < 4; i++) //first check opponent's dragons
             {
@@ -120,17 +131,23 @@ namespace dotNetGo
                     if (liberties <= 1) //if the dragon has no liberties, remove it, else do nothing
                     {
                         //we know that this is opponent's dragon - important!!!
+//                        Program.IsConsumingSpan += DateTime.Now - start;
                         return true;
                     }
                 }
             }
+//            Program.IsConsumingSpan += DateTime.Now - start;
             return false;
         }
 
         int RemoveDragon(List<Move> dragon)
         {
+//            DateTime start = DateTime.Now;
             if (dragon.Count < 1)
+            {
+//                Program.RemoveDragonSpan += DateTime.Now - start;
                 return 0;
+            }
             int owner = this[dragon[0]];
             int removedStones = 0;
             foreach (Move move in dragon)
@@ -147,6 +164,7 @@ namespace dotNetGo
                     WhiteCaptured += removedStones;
                     break;
             }
+//            Program.RemoveDragonSpan += DateTime.Now - start;
             return removedStones;
         }
 
@@ -172,8 +190,10 @@ namespace dotNetGo
 
         public bool IsMultipleSuicide(Move move)
         {
+//            DateTime start = DateTime.Now;
             List<Move> dragon = GetDragon(move);
             int liberties = GetDragonLiberties(dragon).Count;
+//            Program.IsMultipleSuicideTimeSpan += DateTime.Now - start;
             return liberties < 1;
         }
 
@@ -191,10 +211,11 @@ namespace dotNetGo
         //list of the liberty spaces if the - empty list if there are no liberties
         List<Move> GetLiberties(Move m)
         {
+//            DateTime start = DateTime.Now;
             if (IsOnBoard(m) == false || IsFree(m))
                 return null;
 
-            List<Move> liberties = new List<Move>();
+            List<Move> liberties = new List<Move>(4);
             int owner = board[m.row, m.column];
             Move test = new Move(m);
             for (int i = 0; i < 4; i++)
@@ -206,12 +227,14 @@ namespace dotNetGo
                     liberties.Add(new Move(test));
                 }
             }
+//            Program.GetLibertiesSpan += DateTime.Now - start;
             return liberties;
         }
 
         List<Move> GetDragonLiberties(List<Move> dragon)
         {
-            List<Move> result = new List<Move>();
+//            DateTime start = DateTime.Now;
+            List<Move> result = new List<Move>(_size*_size);
             foreach (Move move in dragon)
             {
                 foreach (Move liberty in GetLiberties(move))
@@ -220,14 +243,19 @@ namespace dotNetGo
                         result.Add(liberty);
                 }
             }
+//            Program.GetDragonLibertiesSpan += DateTime.Now - start;
             return result;
         }
         //дракон - множество камней, непосредственно примыкающих друг к другу (не по диагонали)
         List<Move> GetDragon(Move m)
         {
-            List<Move> result = new List<Move>();
-            if (IsOnBoard(m) == false || IsFree(m)) 
+//            DateTime start = DateTime.Now;;
+            List<Move> result = new List<Move>(_size*_size);
+            if (IsOnBoard(m) == false || IsFree(m))
+            {
+//                Program.GetDragonSpan += DateTime.Now - start;
                 return result;
+            }
             result.Add(m);
             int owner = board[m.row, m.column];
             int checkedStones = 0;
@@ -252,6 +280,7 @@ namespace dotNetGo
                 }
                 checkedStones++;
             }
+//            Program.GetDragonSpan += DateTime.Now - start;
             return result;
         }
         //то же самое, но с указанием игрока, которому принадлежит дракон
@@ -309,13 +338,31 @@ namespace dotNetGo
             else return 2;
         }
 
+        public void Surrender()
+        {
+            switch (ActivePlayer)
+            {
+                case 1:
+                    BlackCaptured += 1500;
+                    break;
+                case 2:
+                    WhiteCaptured += 1500;
+                    break;
+            }
+            Passes = 2;
+        }
+
         //checks whether the game is over
         //returns true if there all empty spaces are 1-space eyes
         //returns false when there are potential moves left
         public bool IsGameOver()
         {
+//            DateTime start = DateTime.Now;
             if (Passes >= 2)
+            {
+//                Program.IsGemeOverSpan += DateTime.Now - start;
                 return true;
+            }
             List<Move> availableMoves = new List<Move>(_size * _size);
             Move test = new Move(0,0);
             for (int i = 0; i < _size; i++)
@@ -333,14 +380,19 @@ namespace dotNetGo
                 {
                     Move m = new Move(move.row + Directions[i, 0], move.column + Directions[i, 1]);
                     if (IsEye(move, out eyeOwner) == false)
+                    {
+//                        Program.IsGemeOverSpan += DateTime.Now - start;
                         return false;
+                    }
                 }
             }
+//            Program.IsGemeOverSpan += DateTime.Now - start;
             return true;
         }
 
         public override string ToString()
         {
+//            DateTime start = DateTime.Now;
             StringBuilder sb = new StringBuilder("  ");
             for (int i = 0; i < _size; i++)
                 sb.Append(i.ToString());
@@ -365,6 +417,7 @@ namespace dotNetGo
                 }
                 sb.AppendLine();
             }
+//            Program.ToStringSpan += DateTime.Now - start;
             return sb.ToString();
         }
 
@@ -375,6 +428,7 @@ namespace dotNetGo
         //an intersection is an eye when all surrounding stones belong to the same dragon - also fixes false eyes
         public bool IsEye(Move move, out int owner) //false eyes fixed
         {
+//            DateTime start = DateTime.Now;
             owner = 0;
             if (IsOnBoard(move) == false || this[move] != 0)
             {
@@ -401,7 +455,9 @@ namespace dotNetGo
                 else
                 {
                     if (dragon.Contains(m) == false)
+                    {
                         return false;
+                    }
                 }
             }
             owner = this[dragon[0]];

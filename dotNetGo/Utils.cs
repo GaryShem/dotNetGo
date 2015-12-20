@@ -7,13 +7,12 @@ namespace dotNetGo
 {
     static class Utils
     {
-        public static void Shuffle<T>(this IList<T> list, Random r)
+        public static void Shuffle<T>(this IList<T> list)
         {
             int n = list.Count;
             while (n > 1)
             {
-                int k;
-                lock(r) k = (r.Next(0, n) % n);
+                var k = RandomGen.Next(0, n) % n;
                 n--;
                 T value = list[k];
                 list[k] = list[n];

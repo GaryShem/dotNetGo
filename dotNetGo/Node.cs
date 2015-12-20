@@ -1,4 +1,6 @@
-﻿namespace dotNetGo
+﻿using System;
+
+namespace dotNetGo
 {
     class Node {
 //        public int Wins { get; set; }
@@ -12,6 +14,11 @@
             Winrate = 0;
 //            Wins = 0;
 //            Simulations = 0;
+        }
+
+        public override string ToString()
+        {
+            return String.Format("{0}; {1}", Pos, Winrate);
         }
     }
 }
