@@ -28,11 +28,12 @@ namespace dotNetGo
                         //is not a friendly eye
                         if (f == false || eyeOwner != b.ActivePlayer)
                         {
-                            b[i, j] = b.ActivePlayer;
-                            //is not a suicide
-                            if (b.IsMultipleSuicide(m) == false || b.IsConsuming(m) == true)
-                                result.Add(m);
-                            b[i, j] = 0;
+//                            b[i, j] = b.ActivePlayer;
+//                            //is not a suicide
+//                            if (b.IsMultipleSuicide(m) == false || b.IsConsuming(m) == true)
+//                                result.Add(m);
+//                            b[i, j] = 0;
+                            result.Add(m);
                         }
                         else
                         {
@@ -107,12 +108,15 @@ namespace dotNetGo
             int wins = 0;
             while (sim < simulations)
             {
-                sim++;
                 int winner = PlaySimulation(b);
-                if (winner == player)
-                    wins++;
+                if (winner != 0)
+                {
+                    sim++;
+                    if (winner == player)
+                        wins++;
+                }
             }
-            return (double)wins/sim;
+            return sim > 0 ? (double) wins/sim : 0;
         }
 
         

@@ -41,6 +41,10 @@ namespace dotNetGo
             set { board[m.row, m.column] = value; }
         }
 
+        public int[,] GetBoard()
+        {
+            return board;
+        }
         public Board()
         {
             BlackCaptured = 0;
