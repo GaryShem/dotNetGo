@@ -7,21 +7,10 @@ namespace dotNetGo
 {
     public class Program
     {
-//        public static TimeSpan PlaceStoneSpan = TimeSpan.Zero;
-//        public static TimeSpan IsConsumingSpan = TimeSpan.Zero;
-//        public static TimeSpan RemoveDragonSpan = TimeSpan.Zero;
-//        public static TimeSpan IsMultipleSuicideTimeSpan = TimeSpan.Zero;
-//        public static TimeSpan GetLibertiesSpan = TimeSpan.Zero;
-//        public static TimeSpan GetDragonLibertiesSpan = TimeSpan.Zero;
-//        public static TimeSpan GetDragonSpan = TimeSpan.Zero;
-//        public static TimeSpan IsGemeOverSpan = TimeSpan.Zero;
-//        public static TimeSpan IsEyeSpan = TimeSpan.Zero;
-//        public static TimeSpan CopyStateSpan = TimeSpan.Zero;
-//        public static TimeSpan ToStringSpan = TimeSpan.Zero;
-
         public static void Main(string[] args)
         {
-            AIvsAI(10);
+            AIvsAI(1);
+//            Console.ReadLine();
         }
 
         public static void AIvsAI(int gameCount)
@@ -34,23 +23,36 @@ namespace dotNetGo
             for (int i = 0; i < gameCount; i++)
             {
                 Board board = new Board();
-                while (board.TurnNumber < GameParameters.GameDepth && board.IsGameOver() == false)
+                while (board.IsGameOver() == false)
                 {
-                    DateTime start = DateTime.Now;
                     Move m = MC.GetMove(board);
                     if (m.row == -2 && m.column == -2)
                     {
-                        winners[3 - board.ActivePlayer]++;
+                        board.Surrender();
                         break;
                     }
+//                    return;
                     board.PlaceStone(m);
                     Console.WriteLine(board);
                 }
-                double black, white;
-                winners[board.DetermineWinner(out black, out white)]++;
+                switch (board.State)
+                {
+                    case Board.GameState.BlackSurrendered:
+                        Console.WriteLine("White won by resignation, last position:");
+                        break;
+                    case Board.GameState.WhiteSurrendered:
+                        Console.WriteLine("Black won by resignation, last position:");
+                        break;
+                    case Board.GameState.DoublePass:
+                        double black, white;
+                        winners[board.DetermineWinner(out black, out white)]++;
+                        Console.WriteLine(board);
+                        Console.WriteLine("Turn: {0}; White captured: {1}; Black captured: {2}", board.TurnNumber, board.WhiteCaptured, board.BlackCaptured);
+                        Console.WriteLine("Black score: {1}; White score: {0}", black, white);
+                        Console.WriteLine("last position:");
+                        break;
+                }
                 Console.WriteLine(board);
-                Console.WriteLine("Turn: {0}; White captured: {1}; Black captured: {2}", board.TurnNumber, board.WhiteCaptured, board.BlackCaptured);
-                Console.WriteLine("Black score: {1}; White score: {0}", black, white);
             }
         }
 
@@ -114,14 +116,6 @@ namespace dotNetGo
             else throw new Exception("can't be this player");
         }
 
-        public static void f2()
-        {
-            Board b = new Board();
-            MonteCarlo MC = new MonteCarlo();
-            MC.PlaySimulation(b);
-            Console.ReadLine();
-
-        }
         public static void f1()
         {
             Board b = new Board();
@@ -147,7 +141,7 @@ namespace dotNetGo
             b.PlaceStone(new Move(4, 8));
             Console.WriteLine(b);
             int a;
-            Console.WriteLine(b.IsEye(new Move(3, 8), out a));
+            Console.WriteLine(b.IsEye(3, 8, out a));
             Console.WriteLine(b);
             Console.WriteLine(a);
         }

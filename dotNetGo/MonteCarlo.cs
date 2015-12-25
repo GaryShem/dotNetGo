@@ -11,38 +11,25 @@ namespace dotNetGo
     internal class MonteCarlo
     {
         private int size = GameParameters.boardSize;
-        
+
         List<Move> GetAvailableMoves(Board b)
         {
-            List<Move> result = new List<Move>(size*size);
+            List<Move> result = new List<Move>(size * size);
             int eyeOwner;
+            bool f;
             for (int i = 0; i < size; i++)
                 for (int j = 0; j < size; j++)
                 {
-                    Move m = new Move(i,j);
-                    eyeOwner = 0;
-                    bool f = b.IsEye(m, out eyeOwner);
                     //is on empty space on the board
-                    if (b.IsOnBoard(m) && b[i, j] == 0)
+                    if (b.IsOnBoard(i, j) && b[i, j] == 0)
                     {
+                        eyeOwner = 0;
+                        f = b.IsEye(i, j, out eyeOwner);
                         //is not a friendly eye
                         if (f == false || eyeOwner != b.ActivePlayer)
                         {
-//                            b[i, j] = b.ActivePlayer;
-//                            //is not a suicide
-//                            if (b.IsMultipleSuicide(m) == false || b.IsConsuming(m) == true)
-//                                result.Add(m);
-//                            b[i, j] = 0;
-                            result.Add(m);
+                            result.Add(new Move(i, j));
                         }
-                        else
-                        {
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        continue;
                     }
                 }
             return result;
@@ -52,59 +39,41 @@ namespace dotNetGo
         {
             Board board = new Board();
             board.CopyState(startingBoard);
-            while (board.TurnNumber < GameParameters.GameDepth && board.IsGameOver() == false)
+            int turnsSimulated = 0;
+            while (turnsSimulated < GameParameters.GameDepth && board.IsGameOver() == false)
             {
+                turnsSimulated++;
                 List<Move> availableMoves = GetAvailableMoves(board);
+                Move pass = new Move(-1, -1); //добавить в список возможных ходов пас
+                availableMoves.Add(pass);
                 availableMoves.Shuffle();
-                bool f = false;
-                Move m = new Move(-1,-1);
                 foreach (Move move in availableMoves)
                 {
                     if (board.PlaceStone(move) == true)
                     {
-                        m = move;
-                        f = true;
                         break;
                     }
                 }
-//                Console.WriteLine("Turn {0}", board.TurnNumber);
-                if (f == false)
-                {
-//                    Console.WriteLine(board.ActivePlayer == 1 ? "Black passed" : "White passed");
-                    board.Pass();
-                }
-                else
-                {
-//                    Console.WriteLine(m);
-                }
-//                Console.WriteLine(board);
-//                Console.WriteLine("Black prisoners == {0}", board.BlackCaptured);
-//                Console.WriteLine("White prisoners == {0}", board.WhiteCaptured);
-//                Console.ReadLine();
             }
             double white, black;
             int winner = board.DetermineWinner(out black, out white);
-//            switch (winner)
-//            {
-//                case 1:
-//                    Console.WriteLine("Black won by {0}", black-white);
-//                    break;
-//                case 2:
-//                    Console.WriteLine("White won by {0}", white-black);
-//                    break;
-//            }
             return winner;
         }
 
         double GetWinrate(Move move, Board startingBoard)
         {
-            int simulations = GameParameters.Simulations;
+            UInt64 simulations;
+            checked
+            {
+                simulations = GameParameters.Simulations + (UInt64) Math.Pow(GameParameters.growthFactor, startingBoard.TurnNumber);
+            }
+            simulations = Math.Min(simulations, GameParameters.MaxSimulations);
             int player = startingBoard.ActivePlayer;
             Board b = new Board();
             b.CopyState(startingBoard);
             if (b.PlaceStone(move) == false)
                 return 0;
-            int sim = 0;
+            UInt64 sim = 0;
             int wins = 0;
             while (sim < simulations)
             {
@@ -116,16 +85,28 @@ namespace dotNetGo
                         wins++;
                 }
             }
-            return sim > 0 ? (double) wins/sim : 0;
+            return sim > 0 ? (double)wins / sim : 0;
         }
 
-        
+
         public Move GetMove(Board board)
         {
             Board b = new Board();
             b.CopyState(board);
             DateTime start = DateTime.Now;
             List<Move> availableMoves = GetAvailableMoves(b);
+            //most simple logic for the first couple of turns
+            //reduces required computations and forbids AI from making stupid turns (should not do them anyway)
+            if (board.TurnNumber < 5)
+            {
+                availableMoves = availableMoves.Where(_move => _move.row > 1 && _move.row < 7 
+                                                    && _move.column > 1 && _move.column < 7).ToList();
+            }
+            else if (board.TurnNumber < 10)
+                availableMoves = availableMoves.Where(_move => _move.row > 0 && _move.row < 8
+                                                    && _move.column > 0 && _move.column < 8).ToList();
+            //add pass
+            availableMoves.Add(new Move(-1, -1));
             Node[] nodes = new Node[availableMoves.Count];
             for (int i = 0; i < availableMoves.Count; i++)
                 nodes[i] = new Node(availableMoves[i]);
@@ -145,17 +126,17 @@ namespace dotNetGo
             }
             DateTime end = DateTime.Now;
             TimeSpan ts = end - start;
-            if (maxWin < 0.1)
+            if (maxWin < 0.05)
             {
                 return new Move(-2, -2);
-//                throw new GameOverException("Turbo has surrendered");
             }
             if (maxWinIndex == -1)
             {
 //                Console.WriteLine("Turbo has passed");
                 return new Move(-1, -1);
             }
-            Console.WriteLine("Turbo has found a move in {0}", ts);
+            Move bestMove = nodes[maxWinIndex].Pos;
+            Console.WriteLine("Turbo-{1} has found move {2}({3},{4}) in {0} after {5} sims", ts, board.ActivePlayer == 1 ? "Black" : "White", board.TurnNumber, bestMove.row, bestMove.column, GameParameters.Simulations + Math.Pow(GameParameters.growthFactor, board.TurnNumber));
 //            Console.WriteLine("Coords: {0}", nodes[maxWinIndex].Pos);
             return nodes[maxWinIndex].Pos;
         }
