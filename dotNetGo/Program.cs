@@ -10,7 +10,7 @@ namespace dotNetGo
         public static void Main(string[] args)
         {
             AIvsAI(1);
-            Console.ReadLine();
+//            Console.ReadLine();
         }
 
         public static void AIvsAI(int gameCount)
@@ -25,13 +25,14 @@ namespace dotNetGo
                 Board board = new Board();
                 while (board.IsGameOver() == false)
                 {
+                    if (board.TurnNumber > 2)
+                        return;
                     Move m = MC.GetMove(board);
                     if (m.row == -2 && m.column == -2)
                     {
                         board.Surrender();
                         break;
                     }
-//                    return;
                     board.PlaceStone(m);
                     Console.WriteLine(board);
                 }
