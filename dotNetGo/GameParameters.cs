@@ -11,7 +11,7 @@ namespace dotNetGo
         public const double komi = 6.5;
         public const int GameDepth = 500;
         public const int TurnTime = 120;
-        public const UInt64 Simulations = 100;
+        public const UInt64 Simulations = 1000;
         public const UInt64 MaxSimulations = 10000;
         public const double growthFactor = 1.3;
     }

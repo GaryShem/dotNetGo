@@ -10,15 +10,19 @@ namespace dotNetGo
     //using the naive approach - no complex heuristics
     internal class MonteCarlo
     {
-        private int size = GameParameters.boardSize;
+        private const int Size = GameParameters.boardSize;
+        [ThreadStatic] private static Move[] _availableMoves;
 
-        List<Move> GetAvailableMoves(Board b)
+        int GetAvailableMoves(Board b)
         {
-            List<Move> result = new List<Move>(size * size);
+            if (_availableMoves == null)
+                _availableMoves = new Move[Size*Size + 1];
+            int moveCount = 0;
             int eyeOwner;
             bool f;
-            for (int i = 0; i < size; i++)
-                for (int j = 0; j < size; j++)
+            for (int i = 0; i < Size; i++)
+            {
+                for (int j = 0; j < Size; j++)
                 {
                     //is on empty space on the board
                     if (b.IsOnBoard(i, j) && b[i, j] == 0)
@@ -28,11 +32,12 @@ namespace dotNetGo
                         //is not a friendly eye
                         if (f == false || eyeOwner != b.ActivePlayer)
                         {
-                            result.Add(new Move(i, j));
+                            _availableMoves[moveCount++] = new Move(i, j);
                         }
                     }
                 }
-            return result;
+            }
+            return moveCount;
         }
 
         public int PlaySimulation(Board startingBoard)
@@ -43,13 +48,14 @@ namespace dotNetGo
             while (turnsSimulated < GameParameters.GameDepth && board.IsGameOver() == false)
             {
                 turnsSimulated++;
-                List<Move> availableMoves = GetAvailableMoves(board);
+                int turnCount = GetAvailableMoves(board);
                 Move pass = new Move(-1, -1); //добавить в список возможных ходов пас
-                availableMoves.Add(pass);
-                availableMoves.Shuffle();
-                foreach (Move move in availableMoves)
+                _availableMoves[turnCount++] = pass;
+                _availableMoves.Shuffle();
+//                foreach (Move move in availableMoves)
+                    for (int i = 0; i < turnCount; i++)
                 {
-                    if (board.PlaceStone(move) == true)
+                    if (board.PlaceStone(_availableMoves[i]) == true)
                     {
                         break;
                     }
@@ -94,24 +100,39 @@ namespace dotNetGo
             Board b = new Board();
             b.CopyState(board);
             DateTime start = DateTime.Now;
-            List<Move> availableMoves = GetAvailableMoves(b);
+            int turnCount = GetAvailableMoves(b);
             //most simple logic for the first couple of turns
             //reduces required computations and forbids AI from making stupid turns (should not do them anyway)
+            int k = 0;
+            int j = 0;
             if (board.TurnNumber < 5)
             {
-                availableMoves = availableMoves.Where(_move => _move.row > 1 && _move.row < 7 
-                                                    && _move.column > 1 && _move.column < 7).ToList();
+                while (j < turnCount)
+                {
+                    Move m = _availableMoves[j++];
+                    if (m.row > 1 && m.row < 7 && m.column > 1 && m.column < 7)
+                        _availableMoves[k++] = m;
+                }
             }
             else if (board.TurnNumber < 10)
-                availableMoves = availableMoves.Where(_move => _move.row > 0 && _move.row < 8
-                                                    && _move.column > 0 && _move.column < 8).ToList();
-            //add pass
-            availableMoves.Add(new Move(-1, -1));
-            Node[] nodes = new Node[availableMoves.Count];
-            for (int i = 0; i < availableMoves.Count; i++)
-                nodes[i] = new Node(availableMoves[i]);
-            Parallel.For(0, availableMoves.Count, (i) =>
             {
+                while (j < turnCount)
+                {
+                    Move m = _availableMoves[j++];
+                    if (m.row > 0 && m.row < 8 && m.column > 0 && m.column < 8)
+                        _availableMoves[k++] = m;
+                }
+            }
+            turnCount = k;
+            //add pass
+            _availableMoves[turnCount++] = new Move(-1, -1);
+            Node[] nodes = new Node[turnCount];
+            for (int i = 0; i < turnCount; i++)
+                nodes[i] = new Node(_availableMoves[i]);
+            Parallel.For(0, turnCount, (i) =>
+            {
+                if (_availableMoves == null)
+                    _availableMoves = new Move[Size*Size + 1];
                 nodes[i].Winrate = GetWinrate(nodes[i].Pos, b);
             });
             double maxWin = -1;

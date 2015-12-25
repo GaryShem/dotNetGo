@@ -10,7 +10,7 @@ namespace dotNetGo
         public static void Main(string[] args)
         {
             AIvsAI(1);
-//            Console.ReadLine();
+            Console.ReadLine();
         }
 
         public static void AIvsAI(int gameCount)
