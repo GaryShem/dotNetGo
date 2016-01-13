@@ -33,7 +33,7 @@ namespace dotNetGo
 
         public override int GetHashCode()
         {
-            return row*GameParameters.boardSize + column;
+            return row*GameParameters.BoardSize + column;
         }
     }
 }

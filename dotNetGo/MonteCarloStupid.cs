@@ -8,13 +8,16 @@ using System.Threading.Tasks;
 namespace dotNetGo
 {
     //using the naive approach - no complex heuristics
-    internal class MonteCarlo
+    internal class MonteCarloStupid
     {
         private const int Size = GameParameters.BoardSize;
         private Board _actualBoard = new Board();
-        [ThreadStatic] private static Move[] _availableMoves;
-        [ThreadStatic] private static Board _testingBoard;
-        [ThreadStatic] private static Board _startingTestingBoard;
+        [ThreadStatic]
+        private static Move[] _availableMoves;
+        [ThreadStatic]
+        private static Board _testingBoard;
+        [ThreadStatic]
+        private static Board _startingTestingBoard;
 
         int GetAvailableMoves(Board b)
         {
@@ -26,9 +29,9 @@ namespace dotNetGo
                 for (int j = 0; j < Size; j++)
                 {
                     //is on empty space on the board and not a friendly eye
-                    if (b[i, j] == 0 && b.IsEye(i,j) != b.ActivePlayer)
+                    if (b[i, j] == 0 && b.IsEye(i, j) != b.ActivePlayer)
                     {
-                            _availableMoves[moveCount++] = new Move(i, j);
+                        _availableMoves[moveCount++] = new Move(i, j);
                     }
                 }
             }
@@ -44,17 +47,12 @@ namespace dotNetGo
             while (turnsSimulated < GameParameters.GameDepth && _testingBoard.IsGameOver() == false)
             {
                 turnsSimulated++;
-                int moveCount = GetAvailableMoves(_testingBoard);
-                Move pass = new Move(-1, -1); //добавить в список возможных ходов пас
-                _availableMoves[moveCount++] = pass;
-                _availableMoves.Shuffle(moveCount);
-                for (int i = 0; i < moveCount; i++)
+                Move m = new Move(-1, -1);
+                do
                 {
-                    if (_testingBoard.PlaceStone(_availableMoves[i]) == true)
-                    {
-                        break;
-                    }
-                }
+                    m.row= RandomGen.Next(-1, GameParameters.BoardSize);
+                    m.column = RandomGen.Next(-1, GameParameters.BoardSize);
+                } while (_testingBoard.PlaceStone(m) == false);
             }
             int winner = _testingBoard.DetermineWinner();
             return winner;
@@ -64,18 +62,12 @@ namespace dotNetGo
         {
             if (_startingTestingBoard == null)
                 _startingTestingBoard = new Board();
-            UInt64 simulations;
-            checked
-            {
-                simulations = GameParameters.Simulations + (UInt64) Math.Pow(GameParameters.GrowthFactor, _actualBoard.TurnNumber);
-            }
-            simulations = Math.Min(simulations, GameParameters.MaxSimulations);
             _startingTestingBoard.CopyStateFrom(_actualBoard);
             if (_startingTestingBoard.PlaceStone(move) == false)
                 return -1;
             UInt64 sim = 0;
             int wins = 0;
-            while (sim < simulations)
+            while (sim < GameParameters.StupidSimulations)
             {
                 int winner = PlaySimulation();
                 if (winner != 0)
@@ -92,6 +84,7 @@ namespace dotNetGo
         {
             return _actualBoard.PlaceStone(m);
         }
+
         public Move GetMove()
         {
             DateTime start = DateTime.Now;
@@ -108,9 +101,15 @@ namespace dotNetGo
                     _availableMoves = new Move[Size*Size + 1];
                 nodes[i].Winrate = GetWinrate(nodes[i].Pos);
             });
+//            for (int i = 0; i < turnCount; i++)
+//            {
+//                if (_availableMoves == null)
+//                    _availableMoves = new Move[Size * Size + 1];
+//                nodes[i].Winrate = GetWinrate(nodes[i].Pos, b);
+//            }
             double maxWin = -1;
             int maxWinIndex = -1;
-            for (int i = 0; i < nodes.Length; i++)
+            for (int i = 0; i < turnCount; i++)
             {
                 if (nodes[i].Winrate > maxWin && nodes[i].Winrate >= 0)
                 {
@@ -129,15 +128,14 @@ namespace dotNetGo
             {
                 bestMove = nodes[maxWinIndex].Pos;
             }
-            Console.WriteLine("Turbo-{1} has found move {2}({3},{4}) in {0} after {5} sims", ts, _actualBoard.ActivePlayer == 1 ? "Black" : "White", _actualBoard.TurnNumber, bestMove.row, bestMove.column, GameParameters.Simulations + Math.Pow(GameParameters.GrowthFactor, _actualBoard.TurnNumber));
-//            Console.WriteLine("Coords: {0}", nodes[maxWinIndex].Pos);
+            Console.WriteLine("StupidTurbo-{1} has found move {2}({3},{4}) in {0} after {5} sims", ts, _actualBoard.ActivePlayer == 1 ? "Black" : "White", _actualBoard.TurnNumber, bestMove.row, bestMove.column, GameParameters.StupidSimulations);
             return bestMove;
         }
 
         private static int ApplyHeuristics(Board board, int turnCount)
         {
-            int j = 0;
             int k = 0;
+            int j = 0;
             if (board.TurnNumber < 5)
             {
                 while (j < turnCount)
