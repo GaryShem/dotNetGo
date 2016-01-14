@@ -44,8 +44,10 @@
   <ItemGroup>
     <Compile Include="Board.cs" />
     <Compile Include="GameParameters.cs" />
-    <Compile Include="GameOverException.cs" />
-    <Compile Include="MonteCarloStupid.cs" />
+    <Compile Include="HumanPlayer.cs" />
+    <Compile Include="ImpossibleException.cs" />
+    <Compile Include="IPlayer.cs" />
+    <Compile Include="MonteCarloRandom.cs" />
     <Compile Include="MonteCarlo.cs" />
     <Compile Include="MonteCarloUCT.cs" />
     <Compile Include="Move.cs" />

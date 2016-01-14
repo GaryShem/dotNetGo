@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace dotNetGo
 {
     //using the naive approach - no complex heuristics
-    internal class MonteCarloStupid
+    internal class MonteCarloRandom : IPlayer
     {
         private const int Size = GameParameters.BoardSize;
         private Board _actualBoard = new Board();
@@ -22,7 +22,7 @@ namespace dotNetGo
         int GetAvailableMoves(Board b)
         {
             if (_availableMoves == null)
-                _availableMoves = new Move[Size*Size];
+                _availableMoves = new Move[Size*Size+1];
             int moveCount = 0;
             for (int i = 0; i < Size; i++)
             {
@@ -67,7 +67,7 @@ namespace dotNetGo
                 return -1;
             UInt64 sim = 0;
             int wins = 0;
-            while (sim < GameParameters.StupidSimulations)
+            while (sim < GameParameters.RandomSimulations)
             {
                 int winner = PlaySimulation();
                 if (winner != 0)
@@ -83,6 +83,11 @@ namespace dotNetGo
         public bool ReceiveTurn(Move m)
         {
             return _actualBoard.PlaceStone(m);
+        }
+
+        public string Name
+        {
+            get { return "MonteCarlo Random"; }
         }
 
         public Move GetMove()
@@ -128,7 +133,7 @@ namespace dotNetGo
             {
                 bestMove = nodes[maxWinIndex].Pos;
             }
-            Console.WriteLine("StupidTurbo-{1} has found move {2}({3},{4}) in {0} after {5} sims", ts, _actualBoard.ActivePlayer == 1 ? "Black" : "White", _actualBoard.TurnNumber, bestMove.row, bestMove.column, GameParameters.StupidSimulations);
+            Console.WriteLine("StupidTurbo-{1} has found move {2}({3},{4}) in {0} after {5} total sims", ts, _actualBoard.ActivePlayer == 1 ? "Black" : "White", _actualBoard.TurnNumber, bestMove.row, bestMove.column, GameParameters.RandomSimulations*turnCount);
             return bestMove;
         }
 

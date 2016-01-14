@@ -3,226 +3,127 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace dotNetGo
 {
     public class Program
     {
+        private const string alphabet = "abcdefghijklmnopqrstuvwxyz"; //for recording
+        private static StringBuilder gameRecord = new StringBuilder();
+        private static bool _isHumanChosen;
+
         public static void Main(string[] args)
         {
-//            UCTvsUCT(1);
-//            AINvsAIN(1);
-//            AINvsAIS(1);
-            UCTvsAIN(1);
+            IPlayer black = ChoosePlayer(1);
+            if (black == null)
+            {
+                Console.WriteLine("User decided to exit");
+                return;
+            }
+            IPlayer white = ChoosePlayer(2);
+            if (white == null)
+            {
+                Console.WriteLine("User decided to exit");
+                return;
+            }
+
+            PlayGame(black, white);
         }
 
-        public static void AINvsAIN(int gameCount = 1)
+        private static IPlayer ChoosePlayer(int playerNumber)
         {
-            int[] winners = new int[3];
-            MonteCarlo black = new MonteCarlo();
-            MonteCarlo white = new MonteCarlo();
-            winners[0] = 0;
-            winners[1] = 0;
-
-            for (int i = 0; i < gameCount; i++)
+            if (playerNumber != 1 && playerNumber != 2)
+                throw new ArgumentOutOfRangeException("playerNumber");
+            string playerColor = playerNumber == 1 ? "black" : "white";
+            Console.WriteLine("Choose {0} player", playerColor);
+            Console.WriteLine("1. UCT");
+            Console.WriteLine("2. MonteCarlo");
+            Console.WriteLine("3. MonteCarlo Random");
+            if (_isHumanChosen == false)
+                Console.WriteLine("4. Human");
+            Console.WriteLine("Anything else: Exit program");
+            Console.Write("-> ");
+            string choiceString = Console.ReadLine();
+            int choice;
+            if (String.IsNullOrWhiteSpace(choiceString) == true || int.TryParse(choiceString, out choice) == false)
+                return null;
+            switch (choice)
             {
-                Board board = new Board();
-                while (board.IsGameOver() == false)
-                {
-//                    if (board.TurnNumber > 2)
-//                        return;
-                    Move move;
-                    switch (board.ActivePlayer)
-                    {
-                        case 1:
-                            move = black.GetMove();
-                            break;
-                        default: //case 2:
-                            move = white.GetMove();
-                            break;
-                    }
-                    black.ReceiveTurn(move);
-                    white.ReceiveTurn(move);
-                    board.PlaceStone(move);
-                    Console.WriteLine(board);
-                    Console.ReadLine();
-                }
-                switch (board.State)
-                {
-                    case Board.GameState.BlackSurrendered:
-                        Console.WriteLine("White won by resignation, last position:");
-                        break;
-                    case Board.GameState.WhiteSurrendered:
-                        Console.WriteLine("Black won by resignation, last position:");
-                        break;
-                    case Board.GameState.DoublePass:
-                        double blackScore, whiteScore;
-                        winners[board.DetermineWinner(out blackScore, out whiteScore)]++;
-                        Console.WriteLine(board);
-                        Console.WriteLine("Turn: {0}", board.TurnNumber);
-                        Console.WriteLine("Black score: {1}; White score: {0}", blackScore, whiteScore);
-                        Console.WriteLine("last position:");
-                        break;
-                }
-                Console.WriteLine(board);
+                case 1:
+                    return new MonteCarloUCT((byte) playerNumber, false);
+                case 2:
+                    return new MonteCarlo();
+                case 3:
+                    return new MonteCarloRandom();
+                case 4:
+                    if (_isHumanChosen == true)
+                        return null;
+                    _isHumanChosen = true;
+                    return new HumanPlayer();
+                default:
+                    return null;
             }
         }
 
-        public static void AINvsAIS(int gameCount = 1)
+        public static void PlayGame(IPlayer blackPlayer, IPlayer whitePlayer)
         {
-            int[] winners = new int[3];
-            MonteCarlo black = new MonteCarlo();
-            MonteCarloStupid white = new MonteCarloStupid();
-            winners[0] = 0;
-            winners[1] = 0;
+            gameRecord.AppendLine("(;FF[4]GM[1]SZ[9]AP[dotNetGo]");
 
-            for (int i = 0; i < gameCount; i++)
+            gameRecord.AppendLine(String.Format("PB[{0}]", blackPlayer.Name));
+            gameRecord.AppendLine("HA[0]");
+            gameRecord.AppendLine(String.Format("PW[{0}]", whitePlayer.Name));
+            gameRecord.AppendLine("KM[6.5]");
+            gameRecord.AppendLine("RU[Chinese]");
+            gameRecord.AppendLine("");
+            gameRecord.AppendLine("");
+            Board board = new Board();
+            while (board.IsGameOver() == false)
             {
-                Board board = new Board();
-                while (board.IsGameOver() == false)
+                Move move;
+                switch (board.ActivePlayer)
                 {
-                    //                    if (board.TurnNumber > 2)
-                    //                        return;
-                    Move move;
-                    switch (board.ActivePlayer)
-                    {
-                        case 1:
-                            move = black.GetMove();
-                            break;
-                        default: //case 2:
-                            move = white.GetMove();
-                            break;
-                    }
-                    black.ReceiveTurn(move);
-                    white.ReceiveTurn(move);
-                    board.PlaceStone(move);
-                    Console.WriteLine(board);
-                    //Console.ReadLine();
-                }
-                switch (board.State)
-                {
-                    case Board.GameState.BlackSurrendered:
-                        Console.WriteLine("White won by resignation, last position:");
+                    case 1:
+                        move = blackPlayer.GetMove();
                         break;
-                    case Board.GameState.WhiteSurrendered:
-                        Console.WriteLine("Black won by resignation, last position:");
-                        break;
-                    case Board.GameState.DoublePass:
-                        double blackScore, whiteScore;
-                        winners[board.DetermineWinner(out blackScore, out whiteScore)]++;
-                        Console.WriteLine(board);
-                        Console.WriteLine("Turn: {0}", board.TurnNumber);
-                        Console.WriteLine("Black score: {1}; White score: {0}", blackScore, whiteScore);
-                        Console.WriteLine("last position:");
+                    default: //case 2:
+                        move = whitePlayer.GetMove();
                         break;
                 }
+                if (blackPlayer.ReceiveTurn(move) == false)
+                    throw new ImpossibleException("somehow invalid turn made it through", "PlayGame");
+                if (whitePlayer.ReceiveTurn(move) == false)
+                    throw new ImpossibleException("somehow invalid turn made it through", "PlayGame");
+                if (move.row > 0 && move.column > 0)
+                    gameRecord.AppendFormat(";{0}[{1}{2}]", board.ActivePlayer == 1? "B": "W", alphabet[move.row], alphabet[move.column]);
+                if (board.PlaceStone(move) == false)
+                    throw new ImpossibleException("somehow invalid turn made it through", "PlayGame");
                 Console.WriteLine(board);
+                //Console.ReadLine();
             }
-        }
-
-        public static void UCTvsUCT(int gameCount = 1)
-        {
-            int[] winners = new int[3];
-            MonteCarloUCT black = new MonteCarloUCT(1);
-            MonteCarloUCT white = new MonteCarloUCT(2);
-            winners[0] = 0;
-            winners[1] = 0;
-
-            for (int i = 0; i < gameCount; i++)
+            switch (board.State)
             {
-                Board board = new Board();
-                while (board.IsGameOver() == false)
-                {
-//                    if (board.TurnNumber > 2)
-//                        return;
-                    Move move;
-                    switch (board.ActivePlayer)
-                    {
-                        case 1:
-                            move = black.GetMove();
-                            break;
-                        default: //case 2:
-                            move = white.GetMove();
-                            break;
-                    }
-                    black.ReceiveTurn(move);
-                    white.ReceiveTurn(move);
-                    board.PlaceStone(move);
+                case Board.GameState.BlackSurrendered:
+                    Console.WriteLine("White won by resignation, last position:");
+                    break;
+                case Board.GameState.WhiteSurrendered:
+                    Console.WriteLine("Black won by resignation, last position:");
+                    break;
+                case Board.GameState.DoublePass:
+                    double blackScore, whiteScore;
+                    board.DetermineWinner(out blackScore, out whiteScore);
                     Console.WriteLine(board);
-//                    Console.ReadLine();
-                }
-                switch (board.State)
-                {
-                    case Board.GameState.BlackSurrendered:
-                        Console.WriteLine("White won by resignation, last position:");
-                        break;
-                    case Board.GameState.WhiteSurrendered:
-                        Console.WriteLine("Black won by resignation, last position:");
-                        break;
-                    case Board.GameState.DoublePass:
-                        double blackScore, whiteScore;
-                        winners[board.DetermineWinner(out blackScore, out whiteScore)]++;
-                        Console.WriteLine(board);
-                        Console.WriteLine("Turn: {0}", board.TurnNumber);
-                        Console.WriteLine("Black score: {1}; White score: {0}", blackScore, whiteScore);
-                        Console.WriteLine("last position:");
-                        break;
-                }
-                Console.WriteLine(board);
+                    Console.WriteLine("Turn: {0}", board.TurnNumber);
+                    Console.WriteLine("Black score: {1}; White score: {0}", blackScore, whiteScore);
+                    Console.WriteLine("last position:");
+                    break;
             }
-        }
-
-        public static void UCTvsAIN(int gameCount = 1)
-        {
-            int[] winners = new int[3];
-            MonteCarloUCT black = new MonteCarloUCT(1);
-            MonteCarlo white = new MonteCarlo();
-            winners[0] = 0;
-            winners[1] = 0;
-
-            for (int i = 0; i < gameCount; i++)
-            {
-                Board board = new Board();
-                while (board.IsGameOver() == false)
-                {
-//                    if (board.TurnNumber > 2)
-//                        return;
-                    Move move;
-                    switch (board.ActivePlayer)
-                    {
-                        case 1:
-                            move = black.GetMove();
-                            break;
-                        default: //case 2:
-                            move = white.GetMove();
-                            break;
-                    }
-                    black.ReceiveTurn(move);
-                    white.ReceiveTurn(move);
-                    board.PlaceStone(move);
-                    Console.WriteLine(board);
-//                    Console.ReadLine();
-                }
-                switch (board.State)
-                {
-                    case Board.GameState.BlackSurrendered:
-                        Console.WriteLine("White won by resignation, last position:");
-                        break;
-                    case Board.GameState.WhiteSurrendered:
-                        Console.WriteLine("Black won by resignation, last position:");
-                        break;
-                    case Board.GameState.DoublePass:
-                        double blackScore, whiteScore;
-                        winners[board.DetermineWinner(out blackScore, out whiteScore)]++;
-                        Console.WriteLine(board);
-                        Console.WriteLine("Turn: {0}", board.TurnNumber);
-                        Console.WriteLine("Black score: {1}; White score: {0}", blackScore, whiteScore);
-                        Console.WriteLine("last position:");
-                        break;
-                }
-                Console.WriteLine(board);
-            }
+            Console.WriteLine(board);
+            gameRecord.Append(")");
+            DateTime dt = DateTime.Now;
+            string filename = String.Format("{0}-{1}-{2}-{3}-{4}-{5}.sgf",
+                dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+            File.WriteAllText(filename, gameRecord.ToString(), Encoding.UTF8);
         }
     }
-
 }

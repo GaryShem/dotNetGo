@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace dotNetGo
 {
     //using the naive approach - no complex heuristics
-    internal class MonteCarlo
+    internal class MonteCarlo : IPlayer
     {
         private const int Size = GameParameters.BoardSize;
         private Board _actualBoard = new Board();
@@ -19,7 +19,7 @@ namespace dotNetGo
         int GetAvailableMoves(Board b)
         {
             if (_availableMoves == null)
-                _availableMoves = new Move[Size*Size];
+                _availableMoves = new Move[Size*Size+1];
             int moveCount = 0;
             for (int i = 0; i < Size; i++)
             {
@@ -64,18 +64,12 @@ namespace dotNetGo
         {
             if (_startingTestingBoard == null)
                 _startingTestingBoard = new Board();
-            UInt64 simulations;
-            checked
-            {
-                simulations = GameParameters.Simulations + (UInt64) Math.Pow(GameParameters.GrowthFactor, _actualBoard.TurnNumber);
-            }
-            simulations = Math.Min(simulations, GameParameters.MaxSimulations);
             _startingTestingBoard.CopyStateFrom(_actualBoard);
             if (_startingTestingBoard.PlaceStone(move) == false)
                 return -1;
             UInt64 sim = 0;
             int wins = 0;
-            while (sim < simulations)
+            while (sim < GameParameters.Simulations)
             {
                 int winner = PlaySimulation();
                 if (winner != 0)
@@ -92,6 +86,12 @@ namespace dotNetGo
         {
             return _actualBoard.PlaceStone(m);
         }
+
+        public string Name
+        {
+            get { return "MonteCarlo"; }
+        }
+
         public Move GetMove()
         {
             DateTime start = DateTime.Now;
@@ -129,7 +129,7 @@ namespace dotNetGo
             {
                 bestMove = nodes[maxWinIndex].Pos;
             }
-            Console.WriteLine("Turbo-{1} has found move {2}({3},{4}) in {0} after {5} sims", ts, _actualBoard.ActivePlayer == 1 ? "Black" : "White", _actualBoard.TurnNumber, bestMove.row, bestMove.column, GameParameters.Simulations + Math.Pow(GameParameters.GrowthFactor, _actualBoard.TurnNumber));
+            Console.WriteLine("Turbo-{1} has found move {2}({3},{4}) in {0} after {5} total sims", ts, _actualBoard.ActivePlayer == 1 ? "Black" : "White", _actualBoard.TurnNumber, bestMove.row, bestMove.column, GameParameters.Simulations*turnCount);
 //            Console.WriteLine("Coords: {0}", nodes[maxWinIndex].Pos);
             return bestMove;
         }

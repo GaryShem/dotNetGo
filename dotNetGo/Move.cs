@@ -2,7 +2,7 @@ using System;
 
 namespace dotNetGo
 {
-    class Move
+    public class Move
     {
         public int row, column;
 

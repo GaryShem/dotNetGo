@@ -32,7 +32,7 @@ namespace dotNetGo
 
         public double GetUctValue()
         {
-            return Winrate + UCTK*Math.Sqrt(Math.Log(Parent.Visits)/Visits);
+            return IsSolved? -1 : Winrate + UCTK*Math.Sqrt(Math.Log(Parent.Visits)/Visits);
         }
 
         public double Winrate
@@ -49,8 +49,8 @@ namespace dotNetGo
         {
             if (m == null || boardState == null)
                 throw new ArgumentNullException("m");
-            BoardState = boardState.Clone() as Board;
-            if (parent != null)
+            BoardState = boardState.Clone();
+            if (parent != null && parent.Children != null)
                 parent.Children.Add(this);
             Parent = parent;
             Children = null;
@@ -59,12 +59,54 @@ namespace dotNetGo
             Visits = 0;
         }
 
+        public void CreateChildren()
+        {
+            int size = Board.Size;
+            Board b = BoardState;
+            if (Children != null)
+                return;
+            if (Parent == null || Parent.Children == null)
+            {
+                Children = new List<UCTNode>(size * size);
+            }
+            else
+            {
+                Children = new List<UCTNode>(Parent.Children.Count);
+            }
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    //is on empty space on the board
+                    if (b[i, j] == 0 && b.IsEye(i, j) != b.ActivePlayer)
+                    {
+                        Board anotherCloneBoard = b.Clone();
+                        Move m = new Move(i, j);
+                        if (anotherCloneBoard.PlaceStone(m) == true)
+                            Children.Add(new UCTNode(this, m, anotherCloneBoard));
+                    }
+                }
+            }
+            Children.Shuffle();
+        }
+
         public void Update(int wins)
         {
             if (wins < 0)
                 throw new ArgumentOutOfRangeException("wins");
             Visits++;
             Wins += wins;
+        }
+
+        public UInt64 MeasureTree()
+        {
+            UInt64 result = 1;
+            if (Children == null) return result;
+            foreach (UCTNode child in Children)
+            {
+                result += child.MeasureTree();
+            }
+            return result;
         }
 
         public override string ToString()
