@@ -61,7 +61,8 @@ namespace dotNetGo
             {
                 if (child.IsSolved == true)
                     continue;
-                double uctvalue = child.Visits > 0 ? child.GetUctValue() : 111111;
+//                double uctvalue = child.Visits > 0 ? child.GetUctValue() : 111111;
+                double uctvalue = child.GetUctValue();
                 if (uctvalue > bestUCT)
                 {
                     bestUCT = uctvalue;
@@ -83,6 +84,17 @@ namespace dotNetGo
                 {
                     m.row = RandomGen.Next(-1, GameParameters.BoardSize);
                     m.column = RandomGen.Next(-1, GameParameters.BoardSize);
+//                    if (m.row == -1 && m.column == -1)
+//                    {
+//                        int turnCount = GetAvailableMoves(node.BoardState);
+//                        if (turnCount > 0)
+//                        {
+//                            for (int i = 0; i < turnCount; i++)
+//                            {
+//                                
+//                            }
+//                        }
+//                    }
                 } while (_boardClone.PlaceStone(m) == false);
             }
             int winner = _boardClone.DetermineWinner();
@@ -92,7 +104,7 @@ namespace dotNetGo
         private int GetAvailableMoves(Board b)
         {
             if (_availableMoves == null)
-                _availableMoves = new Move[Size * Size];
+                _availableMoves = new Move[Size * Size+1];
             int moveCount = 0;
             for (int i = 0; i < Size; i++)
             {
@@ -141,6 +153,9 @@ namespace dotNetGo
                         Console.WriteLine("UCTTurbo-{0} had {1} nodes, lost {2} nodes and now has {3} nodes", _player==1?"Black":"White", Root.MeasureTree(), Root.MeasureTree()-child.MeasureTree(), child.MeasureTree());
                         Root = child;
                         Root.Parent.Children = null;
+                        child.Parent = null;
+                        if (child.Children == null)
+                            child.CreateChildren();
                         return true;
                     }
                 }
@@ -150,7 +165,8 @@ namespace dotNetGo
                 throw new ArgumentException("invalid turn");
             Console.WriteLine("UCTTurbo-{0} had {1} nodes, lost {1} nodes and now has {2} nodes", _player == 1 ? "Black" : "White", Root.MeasureTree(), 1);
             Root.Children = null; //break the link for garbage collection
-            UCTNode newRoot = new UCTNode(Root, new Move(m), newBoard);
+            UCTNode newRoot = new UCTNode(null, new Move(m), newBoard);
+            newRoot.CreateChildren();
             Root = newRoot;
             return true;
         }
@@ -233,7 +249,7 @@ namespace dotNetGo
             }
             int currentPlayerWins = randomWinner == _player ? 1 : 0;
             n.Update(currentPlayerWins); //update node (Node-wins are associated with moves in the Nodes)
-            return currentPlayerWins;
+            return randomWinner;
         }
 
         private int PlayMoreOrLessRandomGame(UCTNode n)
@@ -261,6 +277,12 @@ namespace dotNetGo
                 bestMove = new Move(-1, -1);
             else bestMove = new Move(n.Position);
             TimeSpan ts = DateTime.Now - start;
+            Root.Children.Sort((_x, _y) => _x.Visits.CompareTo(_y.Visits));
+            foreach (UCTNode child in Root.Children)
+            {
+                Console.WriteLine(child);
+            }
+            Root.Children.Shuffle();
             Console.WriteLine("UCTTurbo-{1} has found move {2}({3},{4}) in {0} after {5} sims", ts, Root.BoardState.ActivePlayer == 1 ? "Black" : "White", Root.BoardState.TurnNumber, bestMove.row, bestMove.column, doneSims);
             Console.WriteLine("Current tree size == {0}, and there are {1} solved nodes", Root.MeasureTree(), Root.CountSolvedNodes());
             return bestMove;

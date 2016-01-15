@@ -11,12 +11,12 @@ namespace dotNetGo
         public Board BoardState { get; set; }
         public UCTNode Parent { get; set; }
         public List<UCTNode> Children { get; set; }
-        public Move Position; // position of move
+        public Move Position { get; set; } // position of move
         public int Wins { get; private set; }
         public int Visits { get; private set; }
         public bool IsSolved { get; set; }
+        public double SolvedScore { get; set; }
         public int SolvedWinner { get; set; }
-        public int TurnNumber { get; set; }
         public override bool Equals(object obj)
         {
             UCTNode un = obj as UCTNode;
@@ -32,7 +32,9 @@ namespace dotNetGo
 
         public double GetUctValue()
         {
-            return IsSolved? -1 : Winrate + UCTK*Math.Sqrt(Math.Log(Parent.Visits)/Visits);
+            if (IsSolved)
+                return -1;
+            return Visits > 0 ? Winrate + UCTK*Math.Sqrt(Math.Log(Parent.Visits)/Visits) : 11111;
         }
 
         public double Winrate
@@ -59,33 +61,36 @@ namespace dotNetGo
 
         public void CreateChildren()
         {
-            int size = Board.Size;
-            Board b = BoardState;
-            if (Children != null)
-                return;
-            if (Parent == null || Parent.Children == null)
+            lock (this)
             {
-                Children = new List<UCTNode>(size * size);
-            }
-            else
-            {
-                Children = new List<UCTNode>(Parent.Children.Count);
-            }
-            for (int i = 0; i < size; i++)
-            {
-                for (int j = 0; j < size; j++)
+                int size = Board.Size;
+                Board b = BoardState;
+                if (Children != null)
+                    return;
+                if (Parent == null || Parent.Children == null)
                 {
-                    //is on empty space on the board
-                    if (b[i, j] == 0 && b.IsEye(i, j) != b.ActivePlayer)
+                    Children = new List<UCTNode>(size*size);
+                }
+                else
+                {
+                    Children = new List<UCTNode>(Parent.Children.Count);
+                }
+                for (int i = 0; i < size; i++)
+                {
+                    for (int j = 0; j < size; j++)
                     {
-                        Board anotherCloneBoard = b.Clone();
-                        Move m = new Move(i, j);
-                        if (anotherCloneBoard.PlaceStone(m) == true)
-                            Children.Add(new UCTNode(this, m, anotherCloneBoard));
+                        //is on empty space on the board
+                        if (b[i, j] == 0 && b.IsEye(i, j) != b.ActivePlayer)
+                        {
+                            Board anotherCloneBoard = b.Clone();
+                            Move m = new Move(i, j);
+                            if (anotherCloneBoard.PlaceStone(m) == true)
+                                Children.Add(new UCTNode(this, m, anotherCloneBoard));
+                        }
                     }
                 }
+                Children.Shuffle();
             }
-            Children.Shuffle();
         }
 
         public void Update(int wins)
@@ -121,7 +126,7 @@ namespace dotNetGo
 
         public override string ToString()
         {
-            return String.Format("{0}.{1}; {2}: {3}/{4}", Position.row, Position.column, Winrate, Wins, Visits);
+            return String.Format("{0}.{1}; {2}: {3}/{4} : {5:F5}", Position.row, Position.column, Winrate, Wins, Visits, GetUctValue());
         }
     }
 }
