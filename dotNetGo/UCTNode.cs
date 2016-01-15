@@ -17,6 +17,7 @@ namespace dotNetGo
         public bool IsSolved { get; set; }
         public double SolvedScore { get; set; }
         public int SolvedWinner { get; set; }
+        public bool HasChildren { get; set; }
         public override bool Equals(object obj)
         {
             UCTNode un = obj as UCTNode;
@@ -90,6 +91,7 @@ namespace dotNetGo
                     }
                 }
                 Children.Shuffle();
+                HasChildren = true;
             }
         }
 

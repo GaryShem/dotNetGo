@@ -55,15 +55,15 @@ namespace dotNetGo
                     Console.WriteLine("1. Random");
                     Console.WriteLine("2. Smart");
                     Console.WriteLine("Anything else: Exit program");
-                    int modeChoice = 0;
-                    if (int.TryParse(Console.ReadLine(), out modeChoice) == false || modeChoice < 1 || modeChoice > 2)
+                    int simulationMode = 0;
+                    if (int.TryParse(Console.ReadLine(), out simulationMode) == false || simulationMode < 1 || simulationMode > 2)
                         return null;
-                    switch (modeChoice)
+                    switch (simulationMode)
                     {
                         case 1:
-                            return new MonteCarloUCT((byte)playerNumber, true);
+                            return new MonteCarloUCT((byte)playerNumber, true, false);
                         case 2:
-                            return new MonteCarloUCT((byte)playerNumber, false);
+                            return new MonteCarloUCT((byte)playerNumber, false, false);
                         default:
                             return null;
                     }
@@ -109,8 +109,8 @@ namespace dotNetGo
                     throw new ImpossibleException("somehow invalid turn made it through", "PlayGame");
                 if (whitePlayer.ReceiveTurn(move) == false)
                     throw new ImpossibleException("somehow invalid turn made it through", "PlayGame");
-                if (move.row > 0 && move.column > 0)
-                    gameRecord.AppendFormat(";{0}[{1}{2}]", board.ActivePlayer == 1? "B": "W", alphabet[move.row], alphabet[move.column]);
+                if (move.row >= 0 && move.column >= 0)
+                    gameRecord.AppendFormat(";{0}[{1}{2}]", board.ActivePlayer == 1? "B": "W", alphabet[move.column], alphabet[move.row]);
                 if (board.PlaceStone(move) == false)
                     throw new ImpossibleException("somehow invalid turn made it through", "PlayGame");
                 Console.WriteLine(board);
@@ -127,9 +127,10 @@ namespace dotNetGo
                 case Board.GameState.DoublePass:
                     double blackScore, whiteScore;
                     board.DetermineWinner(out blackScore, out whiteScore);
+                    gameRecord.AppendFormat(";RE[{0}+{1}]", blackScore > whiteScore?"B":"W", Math.Abs(blackScore-whiteScore));
                     Console.WriteLine(board);
                     Console.WriteLine("Turn: {0}", board.TurnNumber);
-                    Console.WriteLine("Black score: {1}; White score: {0}", blackScore, whiteScore);
+                    Console.WriteLine("Black score: {0}; White score: {1}", blackScore, whiteScore);
                     Console.WriteLine("last position:");
                     break;
             }

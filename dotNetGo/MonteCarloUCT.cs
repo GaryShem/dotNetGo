@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,11 +12,16 @@ namespace dotNetGo
         public UCTNode Root;
         private byte _player { get; set; }
         private readonly int _sims;
-        private bool _randomUCT;
-        private Board _boardClone = new Board();
-        private Move[] _availableMoves = new Move[Size*Size+1];
+        private int _doneSims;
 
-        public MonteCarloUCT(byte player, bool randomSims)
+        private bool _randomUCT;
+        private bool _resetTreeEachTurn;
+        [ThreadStatic]
+        private static Board _boardClone;
+        [ThreadStatic]
+        private static Move[] _availableMoves;
+
+        public MonteCarloUCT(byte player, bool randomSims, bool resetTreeEachTurn)
         {
             if (player != 1 && player != 2)
                 throw new ArgumentOutOfRangeException("player");
@@ -27,6 +29,7 @@ namespace dotNetGo
             Root.CreateChildren();
             _player = player;
             _randomUCT = randomSims;
+            _resetTreeEachTurn = resetTreeEachTurn;
             _sims = GameParameters.UCTSimulations;
         }
 
@@ -84,17 +87,6 @@ namespace dotNetGo
                 {
                     m.row = RandomGen.Next(-1, GameParameters.BoardSize);
                     m.column = RandomGen.Next(-1, GameParameters.BoardSize);
-//                    if (m.row == -1 && m.column == -1)
-//                    {
-//                        int turnCount = GetAvailableMoves(node.BoardState);
-//                        if (turnCount > 0)
-//                        {
-//                            for (int i = 0; i < turnCount; i++)
-//                            {
-//                                
-//                            }
-//                        }
-//                    }
                 } while (_boardClone.PlaceStone(m) == false);
             }
             int winner = _boardClone.DetermineWinner();
@@ -121,6 +113,8 @@ namespace dotNetGo
         }
         private int PlayLessRandomGame(UCTNode node)
         {
+            if (_availableMoves == null)
+                _availableMoves = new Move[Size*Size+1];
             _boardClone.CopyStateFrom(node.BoardState);
             int turnsSimulated = 0;
             while (turnsSimulated < GameParameters.GameDepth && _boardClone.IsGameOver() == false)
@@ -128,7 +122,7 @@ namespace dotNetGo
                 turnsSimulated++;
                 int moveCount = GetAvailableMoves(_boardClone);
                 _availableMoves.Shuffle(moveCount);
-                Move pass = new Move(-1, -1); //добавить в список возможных ходов пас
+                Move pass = new Move(-1, -1); //add pass to possible moves
                 _availableMoves[moveCount++] = pass;
                 for (int i = 0; i < moveCount; i++)
                 {
@@ -178,21 +172,24 @@ namespace dotNetGo
 
         private int PlaySimulation(UCTNode n)
         {
+            if (_boardClone == null)
+                _boardClone = new Board();
             int randomWinner = 0;
-            if (n.IsSolved == true) //should always be false
+            if (n.IsSolved == true) //should always be false (only for single thread! - can be true for multiple threads)
             {
-                throw new ImpossibleException("entered solved node for some reason", "PlaySimulation");
                 int solvedCurrentPlayerWins = n.SolvedWinner == _player ? 1 : 0;
                 n.Update(solvedCurrentPlayerWins); //update node (Node-wins are associated with moves in the Nodes)
-                return solvedCurrentPlayerWins;
+                return n.SolvedWinner;
             }
             if (n.Children == null && n.Visits < GameParameters.UCTExpansion && n.IsSolved == false)
             {
+                if (_boardClone == null)
+                    _boardClone = new Board();
                 randomWinner = PlayMoreOrLessRandomGame(n);
             }
             else
             {
-                if (n.Children == null)
+                if (n.HasChildren == false)
                     n.CreateChildren();
                 UCTNode next = UCTSelect(n); // select a move
                 if (next == null) //only happens in finished positions and solved nodes - we can start backpropagating ideal result
@@ -257,25 +254,41 @@ namespace dotNetGo
             return _randomUCT ? PlayRandomGame(n) : PlayLessRandomGame(n);
         }
 
+        private void ParallelSimulations()
+        {
+            while (_doneSims < _sims)
+            {
+                _doneSims++;
+                PlaySimulation(Root);
+            }
+        }
+
         // generate a move, using the uct algorithm
         public Move GetMove()
         {
-            DateTime start = DateTime.Now;
-            int doneSims;
-            Console.WriteLine("Starting Tree size == {0}", Root.MeasureTree());
-            for (doneSims = 0; doneSims < _sims; doneSims++)
-            {
-                if (Root.IsSolved == true)
-                {
-                    break;
-                }
-                PlaySimulation(Root);
-            }
-            UCTNode n = GetBestChild(Root);
             Move bestMove;
+            DateTime start = DateTime.Now;
+            if (_resetTreeEachTurn == true) //EXPERIMENTAL, HAS NOT BEEN TESTED AND MIGHT NOT WORK
+                Root = new UCTNode(null, new Move(-5, -5), Root.BoardState.Clone());
+            Console.WriteLine("Starting Tree size == {0}", Root.MeasureTree());
+            _doneSims = 0;
+            if (Root.Children.Any(_x => _x.IsSolved == true && _x.SolvedWinner == _player))
+            {
+                bestMove = Root.Children.First(_x => _x.IsSolved == true && _x.SolvedWinner == _player).Position;
+            }
+            else
+            {
+                for (int i = 0; i < Environment.ProcessorCount; i++)
+                    new Task(ParallelSimulations).Start();
+                while (_doneSims < _sims)
+                {
+                    Thread.Sleep(100);
+                }
+            UCTNode n = GetBestChild(Root);
             if (n == null)
                 bestMove = new Move(-1, -1);
             else bestMove = new Move(n.Position);
+            }
             TimeSpan ts = DateTime.Now - start;
             Root.Children.Sort((_x, _y) => _x.Visits.CompareTo(_y.Visits));
             foreach (UCTNode child in Root.Children)
@@ -283,8 +296,8 @@ namespace dotNetGo
                 Console.WriteLine(child);
             }
             Root.Children.Shuffle();
-            Console.WriteLine("UCTTurbo-{1} has found move {2}({3},{4}) in {0} after {5} sims", ts, Root.BoardState.ActivePlayer == 1 ? "Black" : "White", Root.BoardState.TurnNumber, bestMove.row, bestMove.column, doneSims);
             Console.WriteLine("Current tree size == {0}, and there are {1} solved nodes", Root.MeasureTree(), Root.CountSolvedNodes());
+            Console.WriteLine("UCTTurbo-{1} has found move {2}({3},{4}) in {0} after {5} sims", ts, Root.BoardState.ActivePlayer == 1 ? "Black" : "White", Root.BoardState.TurnNumber, bestMove.row, bestMove.column, _doneSims);
             return bestMove;
         }
     }
