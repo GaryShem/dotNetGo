@@ -51,7 +51,22 @@ namespace dotNetGo
             switch (choice)
             {
                 case 1:
-                    return new MonteCarloUCT((byte) playerNumber, false);
+                    Console.WriteLine("Choose UCT simulation mode:");
+                    Console.WriteLine("1. Random");
+                    Console.WriteLine("2. Smart");
+                    Console.WriteLine("Anything else: Exit program");
+                    int modeChoice = 0;
+                    if (int.TryParse(Console.ReadLine(), out modeChoice) == false || modeChoice < 1 || modeChoice > 2)
+                        return null;
+                    switch (modeChoice)
+                    {
+                        case 1:
+                            return new MonteCarloUCT((byte)playerNumber, true);
+                        case 2:
+                            return new MonteCarloUCT((byte)playerNumber, false);
+                        default:
+                            return null;
+                    }
                 case 2:
                     return new MonteCarlo();
                 case 3:

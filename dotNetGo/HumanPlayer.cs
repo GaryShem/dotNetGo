@@ -18,16 +18,19 @@ namespace dotNetGo
                 string moveCoordsString = Console.ReadLine();
                 if (String.IsNullOrWhiteSpace(moveCoordsString) == true)
                     continue;
-                string[] coords = Console.ReadLine().Split(' ');
+                string[] coords = moveCoordsString.Split(' ');
                 if (coords.Length != 2)
                     continue;
                 int row;
                 int column;
-                if (int.TryParse(coords[0], out row) == true && int.TryParse(coords[1], out column) == true)
+                if (int.TryParse(coords[0], out row) == true)
                 {
-                    Move result = new Move(row, column);
-                    if (cloneBoard.PlaceStone(result) == true)
-                        return result;
+                    if (int.TryParse(coords[1], out column) == true)
+                    {
+                        Move result = new Move(row, column);
+                        if (cloneBoard.PlaceStone(result) == true)
+                            return result;
+                    }
                 }
             }
         }

@@ -50,8 +50,6 @@ namespace dotNetGo
             if (m == null || boardState == null)
                 throw new ArgumentNullException("m");
             BoardState = boardState.Clone();
-            if (parent != null && parent.Children != null)
-                parent.Children.Add(this);
             Parent = parent;
             Children = null;
             Position = new Move(m);
@@ -105,6 +103,18 @@ namespace dotNetGo
             foreach (UCTNode child in Children)
             {
                 result += child.MeasureTree();
+            }
+            return result;
+        }
+
+        public UInt64 CountSolvedNodes()
+        {
+            UInt64 result;
+            result = IsSolved ? 1ul : 0ul;
+            if (Children == null) return result;
+            foreach (UCTNode child in Children)
+            {
+                result += child.CountSolvedNodes();
             }
             return result;
         }
