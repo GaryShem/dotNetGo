@@ -43,7 +43,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Board.cs" />
-    <Compile Include="buffer.cs" />
     <Compile Include="GameParameters.cs" />
     <Compile Include="HumanPlayer.cs" />
     <Compile Include="ImpossibleException.cs" />

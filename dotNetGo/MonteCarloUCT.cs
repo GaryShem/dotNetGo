@@ -197,27 +197,33 @@ namespace dotNetGo
                     n.IsSolved = true;
                     if (n.Children.Count == 0) //this is a terminal position - there can be no nodes after it
                     {
-                        n.SolvedWinner = n.BoardState.DetermineWinner();
+                        double blackScore, whiteScore;
+                        n.SolvedWinner = n.BoardState.DetermineWinner(out blackScore, out whiteScore);
+                        n.SolvedScore = _player == 1 ? blackScore : whiteScore;
                     }
                     else //this is a non-terminal position for which all possible subsequent moves have been checked
                     {
-                        if (n.BoardState.ActivePlayer == _player) //if, for this node, it's this player's turn, then we take the best result
+                        if (n.BoardState.ActivePlayer == _player)
+                            //if, for this node, it's this player's turn, then we take the best result
                         {
+                            bool foundWin = false;
                             foreach (UCTNode child in n.Children)
                             {
                                 if (child.IsSolved == false)
                                     throw new ImpossibleException("solved node's child is not solved", "PlaySimulation");
-                                if (child.SolvedWinner == _player) //if we find a choice that leads to sure win for current player, we immediately take it
+                                if (child.SolvedWinner == _player)
+                                    //if we find a choice that leads to sure win for current player, we immediately take it
                                 {
+                                    foundWin = true;
                                     n.SolvedWinner = _player;
                                     n.Update(1);
                                     return 1;
                                 }
-                                //if we don't find a node that leads to current player's victory
-                                n.SolvedWinner = 3 - _player;
-                                n.Update(0);
-                                return 0;
                             }
+                            //if we don't find a node that leads to current player's victory
+                            n.SolvedWinner = 3 - _player;
+                            n.Update(0);
+                            return 0;
                         }
                         else //if it's enemy's turn on this node, then we take the worst result
                         {
@@ -225,17 +231,18 @@ namespace dotNetGo
                             {
                                 if (child.IsSolved == false)
                                     throw new ImpossibleException("solved node's child is not solved", "PlaySimulation");
-                                if (child.SolvedWinner != _player) //if we find a choice that leads to sure win for enemy, we immediately take it
+                                if (child.SolvedWinner != _player)
+                                    //if we find a choice that leads to sure win for enemy, we immediately take it
                                 {
                                     n.SolvedWinner = 3 - _player;
                                     n.Update(0);
                                     return 0;
                                 }
-                                //if we don't find a node that leads to enemy's victory, we assume that this is our winning node
-                                n.SolvedWinner = _player;
-                                n.Update(1);
-                                return 1;
                             }
+                            //if we don't find a node that leads to enemy's victory, we assume that this is our winning node
+                            n.SolvedWinner = _player;
+                            n.Update(1);
+                            return 1;
                         }
                     }
                 }
@@ -284,10 +291,14 @@ namespace dotNetGo
                 {
                     Thread.Sleep(100);
                 }
-            UCTNode n = GetBestChild(Root);
-            if (n == null)
-                bestMove = new Move(-1, -1);
-            else bestMove = new Move(n.Position);
+                UCTNode n = GetBestChild(Root);
+                if (n.Children.TrueForAll(_x => _x.Winrate < 0.1))
+                {
+                    
+                }
+                if (n == null)
+                    bestMove = new Move(-1, -1);
+                else bestMove = new Move(n.Position);
             }
             TimeSpan ts = DateTime.Now - start;
             Root.Children.Sort((_x, _y) => _x.Visits.CompareTo(_y.Visits));
