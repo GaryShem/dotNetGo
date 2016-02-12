@@ -2,43 +2,44 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Engine.Core;
+using Engine.Interface;
+using Engine.Misc;
 
-namespace dotNetGo
+namespace Engine.AI
 {
-    internal class MonteCarloUCT : IPlayer
+    public class MonteCarloUCT : IPlayer
     {
 
         private const int Size = GameParameters.BoardSize;
-        public UCTNode Root;
+        private Node _root;
         private byte _player { get; set; }
         private readonly int _sims;
         private int _doneSims;
 
         private bool _randomUCT;
-        private bool _resetTreeEachTurn;
         [ThreadStatic]
         private static Board _boardClone;
         [ThreadStatic]
         private static Move[] _availableMoves;
 
-        public MonteCarloUCT(byte player, bool randomSims, bool resetTreeEachTurn)
+        public MonteCarloUCT(byte player, bool randomSims)
         {
             if (player != 1 && player != 2)
                 throw new ArgumentOutOfRangeException("player");
-            Root = new UCTNode(null, new Move(-5, -5), new Board());
-            Root.CreateChildren();
+            _root = new Node(null, new Move(-5, -5), new Board());
+            _root.CreateChildren();
             _player = player;
             _randomUCT = randomSims;
-            _resetTreeEachTurn = resetTreeEachTurn;
             _sims = GameParameters.UCTSimulations;
         }
 
-        public UCTNode GetBestChild(UCTNode root)
+        private Node GetBestChild(Node root)
         {
-            UCTNode bestChild = null;
+            Node bestChild = null;
             int bestVisits = -1;
 
-            foreach (UCTNode child in Root.Children)
+            foreach (Node child in _root.Children)
             {
                 if (child.IsSolved && child.SolvedWinner == _player)
                 {
@@ -56,11 +57,11 @@ namespace dotNetGo
         public const double UCTK = GameParameters.UCTSimulations; // theoretically should be 0.44 = sqrt(1/5)
         // Larger values give uniform search
         // Smaller values give very selective search
-        public UCTNode UCTSelect(UCTNode node)
+        private Node UCTSelect(Node node)
         {
-            UCTNode result = null;
+            Node result = null;
             double bestUCT = 0;
-            foreach (UCTNode child in node.Children)
+            foreach (Node child in node.Children)
             {
                 if (child.IsSolved == true)
                     continue;
@@ -75,7 +76,7 @@ namespace dotNetGo
             return result;
         }
 
-        private int PlayRandomGame(UCTNode node)
+        private int PlayRandomGame(Node node)
         {
             _boardClone.CopyStateFrom(node.BoardState);
             int turnsSimulated = 0;
@@ -111,7 +112,7 @@ namespace dotNetGo
             }
             return moveCount;
         }
-        private int PlayLessRandomGame(UCTNode node)
+        private int PlayLessRandomGame(Node node)
         {
             if (_availableMoves == null)
                 _availableMoves = new Move[Size*Size+1];
@@ -138,15 +139,15 @@ namespace dotNetGo
 
         public bool ReceiveTurn(Move m)
         {
-            if (Root.Children != null)
+            if (_root.Children != null)
             {
-                foreach (UCTNode child in Root.Children)
+                foreach (Node child in _root.Children)
                 {
                     if (child.Position.Equals(m))
                     {
-                        Console.WriteLine("UCTTurbo-{0} had {1} nodes, lost {2} nodes and now has {3} nodes", _player==1?"Black":"White", Root.MeasureTree(), Root.MeasureTree()-child.MeasureTree(), child.MeasureTree());
-                        Root = child;
-                        Root.Parent.Children = null;
+                        Console.WriteLine("UCTTurbo-{0} had {1} nodes, lost {2} nodes and now has {3} nodes", _player==1?"Black":"White", _root.MeasureTree(), _root.MeasureTree()-child.MeasureTree(), child.MeasureTree());
+                        _root = child;
+                        _root.Parent.Children = null;
                         child.Parent = null;
                         if (child.Children == null)
                             child.CreateChildren();
@@ -154,14 +155,14 @@ namespace dotNetGo
                     }
                 }
             }
-            Board newBoard = Root.BoardState.Clone();
+            Board newBoard = _root.BoardState.Clone();
             if (newBoard.PlaceStone(m) == false)
                 throw new ArgumentException("invalid turn");
-            Console.WriteLine("UCTTurbo-{0} had {1} nodes, lost {1} nodes and now has {2} nodes", _player == 1 ? "Black" : "White", Root.MeasureTree(), 1);
-            Root.Children = null; //break the link for garbage collection
-            UCTNode newRoot = new UCTNode(null, new Move(m), newBoard);
+            Console.WriteLine("UCTTurbo-{0} had {1} nodes, lost {1} nodes and now has {2} nodes", _player == 1 ? "Black" : "White", _root.MeasureTree(), 1);
+            _root.Children = null; //break the link for garbage collection
+            Node newRoot = new Node(null, new Move(m), newBoard);
             newRoot.CreateChildren();
-            Root = newRoot;
+            _root = newRoot;
             return true;
         }
 
@@ -170,7 +171,7 @@ namespace dotNetGo
             get { return "UCT"; }
         }
 
-        private int PlaySimulation(UCTNode n)
+        private int PlaySimulation(Node n)
         {
             if (_boardClone == null)
                 _boardClone = new Board();
@@ -191,7 +192,7 @@ namespace dotNetGo
             {
                 if (n.HasChildren == false)
                     n.CreateChildren();
-                UCTNode next = UCTSelect(n); // select a move
+                Node next = UCTSelect(n); // select a move
                 if (next == null) //only happens in finished positions and solved nodes - we can start backpropagating ideal result
                 {
                     n.IsSolved = true;
@@ -207,10 +208,10 @@ namespace dotNetGo
                             //if, for this node, it's this player's turn, then we take the best result
                         {
                             bool foundWin = false;
-                            foreach (UCTNode child in n.Children)
+                            foreach (Node child in n.Children)
                             {
                                 if (child.IsSolved == false)
-                                    throw new ImpossibleException("solved node's child is not solved", "PlaySimulation");
+                                    throw new GameEngineException("solved node's child is not solved", "PlaySimulation");
                                 if (child.SolvedWinner == _player)
                                     //if we find a choice that leads to sure win for current player, we immediately take it
                                 {
@@ -227,10 +228,10 @@ namespace dotNetGo
                         }
                         else //if it's enemy's turn on this node, then we take the worst result
                         {
-                            foreach (UCTNode child in n.Children)
+                            foreach (Node child in n.Children)
                             {
                                 if (child.IsSolved == false)
-                                    throw new ImpossibleException("solved node's child is not solved", "PlaySimulation");
+                                    throw new GameEngineException("solved node's child is not solved", "PlaySimulation");
                                 if (child.SolvedWinner != _player)
                                     //if we find a choice that leads to sure win for enemy, we immediately take it
                                 {
@@ -256,7 +257,7 @@ namespace dotNetGo
             return randomWinner;
         }
 
-        private int PlayMoreOrLessRandomGame(UCTNode n)
+        private int PlayMoreOrLessRandomGame(Node n)
         {
             return _randomUCT ? PlayRandomGame(n) : PlayLessRandomGame(n);
         }
@@ -266,7 +267,7 @@ namespace dotNetGo
             while (_doneSims < _sims)
             {
                 _doneSims++;
-                PlaySimulation(Root);
+                PlaySimulation(_root);
             }
         }
 
@@ -275,23 +276,17 @@ namespace dotNetGo
         {
             Move bestMove;
             DateTime start = DateTime.Now;
-            if (_resetTreeEachTurn == true) //EXPERIMENTAL, HAS NOT BEEN TESTED AND MIGHT NOT WORK
-                Root = new UCTNode(null, new Move(-5, -5), Root.BoardState.Clone());
-            Console.WriteLine("Starting Tree size == {0}", Root.MeasureTree());
+//            if (_resetTreeEachTurn == true) //EXPERIMENTAL, HAS NOT BEEN TESTED AND MIGHT NOT WORK
+                _root = new Node(null, new Move(-5, -5), _root.BoardState.Clone());
+            Console.WriteLine("Starting Tree size == {0}", _root.MeasureTree());
             _doneSims = 0;
-            if (Root.Children.Any(_x => _x.IsSolved == true && _x.SolvedWinner == _player))
-            {
-                bestMove = Root.Children.First(_x => _x.IsSolved == true && _x.SolvedWinner == _player).Position;
-            }
-            else
-            {
                 for (int i = 0; i < Environment.ProcessorCount; i++)
                     new Task(ParallelSimulations).Start();
                 while (_doneSims < _sims)
                 {
                     Thread.Sleep(100);
                 }
-                UCTNode n = GetBestChild(Root);
+                Node n = GetBestChild(_root);
                 if (n.Children.TrueForAll(_x => _x.Winrate < 0.1))
                 {
                     
@@ -299,16 +294,15 @@ namespace dotNetGo
                 if (n == null)
                     bestMove = new Move(-1, -1);
                 else bestMove = new Move(n.Position);
-            }
             TimeSpan ts = DateTime.Now - start;
-            Root.Children.Sort((_x, _y) => _x.Visits.CompareTo(_y.Visits));
-            foreach (UCTNode child in Root.Children)
+            _root.Children.Sort((_x, _y) => _x.Visits.CompareTo(_y.Visits));
+            foreach (Node child in _root.Children)
             {
                 Console.WriteLine(child);
             }
-            Root.Children.Shuffle();
-            Console.WriteLine("Current tree size == {0}, and there are {1} solved nodes", Root.MeasureTree(), Root.CountSolvedNodes());
-            Console.WriteLine("UCTTurbo-{1} has found move {2}({3},{4}) in {0} after {5} sims", ts, Root.BoardState.ActivePlayer == 1 ? "Black" : "White", Root.BoardState.TurnNumber, bestMove.row, bestMove.column, _doneSims);
+            _root.Children.Shuffle();
+            Console.WriteLine("Current tree size == {0}, and there are {1} solved nodes", _root.MeasureTree(), _root.CountSolvedNodes());
+            Console.WriteLine("UCTTurbo-{1} has found move {2}({3},{4}) in {0} after {5} sims", ts, _root.BoardState.ActivePlayer == 1 ? "Black" : "White", _root.BoardState.TurnNumber, bestMove.row, bestMove.column, _doneSims);
             return bestMove;
         }
     }

@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Engine.Core;
-using Engine.Interface;
 
 namespace dotNetGo
 {
@@ -18,19 +16,19 @@ namespace dotNetGo
             {
                 Console.WriteLine("Enter row and column for move coordinates, split by space");
                 string moveCoordsString = Console.ReadLine();
-                if (String.IsNullOrWhiteSpace(moveCoordsString) == true)
+                if (String.IsNullOrWhiteSpace(moveCoordsString))
                     continue;
                 string[] coords = moveCoordsString.Split(' ');
                 if (coords.Length != 2)
                     continue;
                 int row;
                 int column;
-                if (int.TryParse(coords[0], out row) == true)
+                if (int.TryParse(coords[0], out row))
                 {
-                    if (int.TryParse(coords[1], out column) == true)
+                    if (int.TryParse(coords[1], out column))
                     {
                         Move result = new Move(row, column);
-                        if (cloneBoard.PlaceStone(result) == true)
+                        if (cloneBoard.PlaceStone(result))
                             return result;
                     }
                 }

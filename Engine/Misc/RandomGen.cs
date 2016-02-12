@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace dotNetGo
+namespace Engine.Misc
 {
     public static class RandomGen
     {

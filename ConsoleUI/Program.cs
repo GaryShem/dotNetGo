@@ -2,10 +2,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using Engine.Core;
-using Engine.Interface;
-using Engine.AI;
-using Engine.Misc;
 
 namespace dotNetGo
 {
@@ -39,14 +35,14 @@ namespace dotNetGo
                 throw new ArgumentOutOfRangeException("playerNumber");
             string playerColor = playerNumber == 1 ? "black" : "white";
             Console.WriteLine("Choose {0} player", playerColor);
-            Console.WriteLine("1. UCT");
+            Console.WriteLine("1. UCT AI");
             if (_isHumanChosen == false)
                 Console.WriteLine("2. Human");
             Console.WriteLine("Anything else: Exit program");
             Console.Write("-> ");
             string choiceString = Console.ReadLine();
             int choice;
-            if (String.IsNullOrWhiteSpace(choiceString) == true || int.TryParse(choiceString, out choice) == false)
+            if (String.IsNullOrWhiteSpace(choiceString) || int.TryParse(choiceString, out choice) == false)
                 return null;
             switch (choice)
             {
@@ -55,7 +51,7 @@ namespace dotNetGo
                     Console.WriteLine("1. Random");
                     Console.WriteLine("2. Smart");
                     Console.WriteLine("Anything else: Exit program");
-                    int simulationMode = 0;
+                    int simulationMode;
                     if (int.TryParse(Console.ReadLine(), out simulationMode) == false || simulationMode < 1 || simulationMode > 2)
                         return null;
                     switch (simulationMode)
@@ -68,7 +64,7 @@ namespace dotNetGo
                             return null;
                     }
                 case 2:
-                    if (_isHumanChosen == true)
+                    if (_isHumanChosen)
                         return null;
                     _isHumanChosen = true;
                     return new HumanPlayer();
@@ -84,7 +80,7 @@ namespace dotNetGo
             gameRecord.AppendLine(String.Format("PB[{0}]", blackPlayer.Name));
             gameRecord.AppendLine("HA[0]");
             gameRecord.AppendLine(String.Format("PW[{0}]", whitePlayer.Name));
-            gameRecord.AppendLine("KM[6.5]");
+            gameRecord.AppendLine(String.Format("KM[{0:F1}]", GameParameters.Komi));
             gameRecord.AppendLine("RU[Chinese]");
             gameRecord.AppendLine("");
             gameRecord.AppendLine("");
@@ -97,18 +93,20 @@ namespace dotNetGo
                     case 1:
                         move = blackPlayer.GetMove();
                         break;
-                    default: //case 2:
+                    case 2:
                         move = whitePlayer.GetMove();
                         break;
+                    default:
+                        throw new ImpossibleException("invalid player", "PlayGame");
                 }
                 if (blackPlayer.ReceiveTurn(move) == false)
-                    throw new GameEngineException("somehow invalid turn made it through", "PlayGame");
+                    throw new ImpossibleException("somehow invalid turn made it through", "PlayGame");
                 if (whitePlayer.ReceiveTurn(move) == false)
-                    throw new GameEngineException("somehow invalid turn made it through", "PlayGame");
+                    throw new ImpossibleException("somehow invalid turn made it through", "PlayGame");
                 if (move.row >= 0 && move.column >= 0)
                     gameRecord.AppendFormat(";{0}[{1}{2}]", board.ActivePlayer == 1? "B": "W", alphabet[move.column], alphabet[move.row]);
                 if (board.PlaceStone(move) == false)
-                    throw new GameEngineException("somehow invalid turn made it through", "PlayGame");
+                    throw new ImpossibleException("somehow invalid turn made it through", "PlayGame");
                 Console.WriteLine(board);
                 //Console.ReadLine();
             }
